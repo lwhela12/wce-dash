@@ -1,0 +1,1496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WCE Provider Intelligence Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #f4f6f9;
+    --surface: #ffffff;
+    --surface-2: #f0f2f5;
+    --surface-3: #e4e7ec;
+    --border: #d1d5db;
+    --text: #1e293b;
+    --text-2: #475569;
+    --text-3: #94a3b8;
+    --accent: #2d4a7a;
+    --accent-dim: rgba(45, 74, 122, 0.08);
+    --accent-2: #d4a732;
+    --accent-2-dim: rgba(212, 167, 50, 0.08);
+    --danger: #dc2626;
+    --danger-dim: rgba(220, 38, 38, 0.06);
+    --success: #16a34a;
+    --success-dim: rgba(22, 163, 74, 0.06);
+    --purple: #7c3aed;
+    --purple-dim: rgba(124, 58, 237, 0.06);
+    --radius: 10px;
+    --radius-sm: 6px;
+    --radius-lg: 14px;
+    --font: 'DM Sans', sans-serif;
+    --font-display: 'Fraunces', serif;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* === HEADER === */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 32px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .logo {
+    height: 44px;
+    width: auto;
+  }
+
+  .logo img {
+    height: 100%;
+    width: auto;
+    display: block;
+  }
+
+  .header-title {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+
+  .header-subtitle {
+    font-size: 12px;
+    color: var(--text-3);
+    margin-top: 2px;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .data-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--accent-dim);
+    border: 1px solid rgba(45, 74, 122, 0.15);
+    border-radius: 20px;
+    font-size: 11px;
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .data-badge .dot {
+    width: 6px;
+    height: 6px;
+    background: var(--success);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .date-range {
+    font-size: 13px;
+    color: var(--text-2);
+    padding: 8px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    cursor: pointer;
+  }
+
+  /* === LAYOUT === */
+  .main {
+    padding: 24px 32px;
+    max-width: 1440px;
+    margin: 0 auto;
+  }
+
+  /* === TABS === */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 24px;
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 4px;
+    border: 1px solid var(--border);
+    width: fit-content;
+  }
+
+  .tab {
+    padding: 10px 20px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--text-3);
+    transition: all 0.2s;
+    border: none;
+    background: none;
+    font-family: var(--font);
+  }
+
+  .tab:hover { color: var(--text-2); }
+
+  .tab.active {
+    background: var(--accent);
+    color: #ffffff;
+    border: 1px solid var(--accent);
+  }
+
+  /* === KPI ROW === */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .kpi-card.teal::before { background: var(--accent); }
+  .kpi-card.orange::before { background: var(--accent-2); }
+  .kpi-card.green::before { background: var(--success); }
+  .kpi-card.red::before { background: var(--danger); }
+  .kpi-card.purple::before { background: var(--purple); }
+
+  .kpi-label {
+    font-size: 11px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+
+  .kpi-value {
+    font-family: var(--font);
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .kpi-card.teal .kpi-value { color: var(--accent); }
+  .kpi-card.orange .kpi-value { color: var(--accent-2); }
+  .kpi-card.green .kpi-value { color: var(--success); }
+  .kpi-card.red .kpi-value { color: var(--danger); }
+  .kpi-card.purple .kpi-value { color: var(--purple); }
+
+  .kpi-delta {
+    font-size: 12px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .kpi-delta.up { color: var(--success); }
+  .kpi-delta.down { color: var(--danger); }
+
+  /* === GRID LAYOUTS === */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .grid-3-1 {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  /* === CARDS === */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    position: relative;
+    box-shadow: var(--shadow);
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .card-tag {
+    font-size: 10px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .card-tag.fhir {
+    background: var(--accent-dim);
+    color: var(--accent);
+    border: 1px solid rgba(45,74,122,0.15);
+  }
+
+  .card-tag.connect {
+    background: var(--accent-2-dim);
+    color: #a07d1c;
+    border: 1px solid rgba(212,167,50,0.2);
+  }
+
+  /* === PROVIDER TABLE === */
+  .provider-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .provider-table th {
+    text-align: left;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-3);
+    font-weight: 600;
+    padding: 0 12px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .provider-table td {
+    padding: 14px 12px;
+    font-size: 13px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+
+  .provider-table tr:last-child td { border-bottom: none; }
+
+  .provider-table tr:hover td {
+    background: var(--surface-2);
+  }
+
+  .provider-name {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .provider-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .provider-info .name { font-weight: 600; font-size: 13px; }
+  .provider-info .role { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+
+  .mini-bar {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--surface-3);
+    width: 80px;
+    overflow: hidden;
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 8px;
+  }
+
+  .mini-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 1s ease;
+  }
+
+  .score-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .score-badge.excellent {
+    background: var(--success-dim);
+    color: var(--success);
+  }
+
+  .score-badge.good {
+    background: var(--accent-dim);
+    color: var(--accent);
+  }
+
+  .score-badge.fair {
+    background: var(--accent-2-dim);
+    color: #a07d1c;
+  }
+
+  .score-badge.needs-improvement {
+    background: var(--danger-dim);
+    color: var(--danger);
+  }
+
+  /* === PATIENT DETAIL PANEL === */
+  .patient-panel {
+    display: none;
+  }
+
+  .patient-panel.active {
+    display: block;
+  }
+
+  .wound-card {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+
+  .wound-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .wound-type {
+    font-weight: 600;
+    font-size: 13px;
+  }
+
+  .wound-status {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+  }
+
+  .wound-status.healing {
+    background: var(--success-dim);
+    color: var(--success);
+  }
+
+  .wound-status.stalled {
+    background: var(--accent-2-dim);
+    color: var(--accent-2);
+  }
+
+  .wound-status.healed {
+    background: var(--accent-dim);
+    color: var(--accent);
+  }
+
+  .wound-status.worsening {
+    background: var(--danger-dim);
+    color: var(--danger);
+  }
+
+  .wound-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  .wound-metric {
+    text-align: center;
+  }
+
+  .wound-metric-val {
+    font-size: 18px;
+    font-weight: 700;
+    font-family: var(--font);
+  }
+
+  .wound-metric-label {
+    font-size: 10px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 2px;
+  }
+
+  .treatment-timeline {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  .timeline-item {
+    display: flex;
+    gap: 12px;
+    padding: 8px 0;
+    font-size: 12px;
+  }
+
+  .timeline-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-top: 4px;
+    flex-shrink: 0;
+  }
+
+  .timeline-date {
+    color: var(--text-3);
+    width: 70px;
+    flex-shrink: 0;
+    font-size: 11px;
+  }
+
+  .timeline-event {
+    color: var(--text-2);
+    line-height: 1.4;
+  }
+
+  .timeline-event strong { color: var(--text); font-weight: 500; }
+
+  /* === CHART CONTAINERS === */
+  .chart-container {
+    position: relative;
+    height: 260px;
+  }
+
+  .chart-container-sm {
+    position: relative;
+    height: 200px;
+  }
+
+  /* === DIAGNOSIS DISTRIBUTION === */
+  .dx-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .dx-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .dx-bar-bg {
+    flex: 1;
+    height: 28px;
+    background: var(--surface-3);
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .dx-bar-fill {
+    height: 100%;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    padding-left: 10px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #ffffff;
+    transition: width 1.2s ease;
+  }
+
+  .dx-label {
+    width: 160px;
+    font-size: 12px;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+
+  .dx-count {
+    width: 40px;
+    text-align: right;
+    font-size: 12px;
+    color: var(--text-2);
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  /* === INSIGHT CARDS === */
+  .insight-card {
+    padding: 14px 16px;
+    border-radius: var(--radius-sm);
+    margin-bottom: 10px;
+    font-size: 13px;
+    line-height: 1.5;
+    border: 1px solid;
+  }
+
+  .insight-card.alert {
+    background: var(--danger-dim);
+    border-color: rgba(220, 38, 38, 0.12);
+    color: #991b1b;
+  }
+
+  .insight-card.positive {
+    background: var(--success-dim);
+    border-color: rgba(22, 163, 74, 0.12);
+    color: #166534;
+  }
+
+  .insight-card.neutral {
+    background: var(--accent-dim);
+    border-color: rgba(45, 74, 122, 0.12);
+    color: #1e3a5f;
+  }
+
+  .insight-icon { margin-right: 8px; }
+
+  /* === SECTION HEADER === */
+  .section-header {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 16px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-header .line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* === PATIENT LIST === */
+  .patient-list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background 0.15s;
+    border: 1px solid transparent;
+  }
+
+  .patient-list-item:hover {
+    background: var(--surface-2);
+    border-color: var(--border);
+  }
+
+  .patient-list-item.selected {
+    background: var(--accent-dim);
+    border-color: rgba(45, 74, 122, 0.2);
+  }
+
+  .patient-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .patient-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: var(--surface-3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-2);
+  }
+
+  .patient-name-text { font-weight: 500; font-size: 13px; }
+  .patient-dx { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+
+  .patient-wounds-count {
+    font-size: 11px;
+    color: var(--text-3);
+    padding: 3px 8px;
+    background: var(--surface-3);
+    border-radius: 4px;
+  }
+
+  /* === SCROLLABLE === */
+  .scroll-y {
+    max-height: 460px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--surface-3) transparent;
+  }
+
+  .scroll-y::-webkit-scrollbar { width: 4px; }
+  .scroll-y::-webkit-scrollbar-track { background: transparent; }
+  .scroll-y::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 4px; }
+
+  /* === FOOTER NOTE === */
+  .footer-note {
+    text-align: center;
+    padding: 32px;
+    font-size: 11px;
+    color: var(--text-3);
+    border-top: 1px solid var(--border);
+    margin-top: 24px;
+  }
+
+  .footer-note strong { color: var(--accent); }
+
+  /* === TAB CONTENT === */
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* === RESPONSIVE === */
+  @media (max-width: 1100px) {
+    .kpi-row { grid-template-columns: repeat(3, 1fr); }
+    .kpi-row[style*="repeat(4"] { grid-template-columns: repeat(2, 1fr) !important; }
+    .grid-2, .grid-3-1 { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 768px) {
+    .main { padding: 16px; }
+    .kpi-row { grid-template-columns: 1fr 1fr; }
+    .kpi-row[style*="repeat(4"] { grid-template-columns: 1fr 1fr !important; }
+    .header { padding: 12px 16px; flex-wrap: wrap; gap: 10px; }
+    .header-left { gap: 10px; }
+    .logo { height: 36px; }
+    .header-title { font-size: 16px; }
+    .header-subtitle { font-size: 11px; }
+    .header-right { width: 100%; justify-content: flex-start; gap: 8px; flex-wrap: wrap; }
+    .tabs { overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch; }
+    .tab { white-space: nowrap; padding: 8px 14px; font-size: 12px; }
+    .kpi-value { font-size: 26px; }
+    .card { padding: 16px; }
+    .provider-table { font-size: 12px; }
+    .provider-table th, .provider-table td { padding: 10px 8px; }
+    .dx-label { width: 120px; font-size: 11px; }
+    .wound-metrics { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .chart-container { height: 220px; }
+    .chart-container-sm { height: 180px; }
+  }
+
+  @media (max-width: 480px) {
+    .main { padding: 12px; }
+    .kpi-row { grid-template-columns: 1fr; }
+    .kpi-row[style*="repeat(4"] { grid-template-columns: 1fr !important; }
+    .header-right { flex-direction: column; align-items: flex-start; }
+    .date-range { font-size: 12px; }
+    .data-badge { font-size: 10px; }
+    .kpi-value { font-size: 28px; }
+    .provider-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .provider-table thead, .provider-table tbody, .provider-table tr { min-width: 600px; display: table; width: 100%; }
+    .dx-label { width: 100px; }
+    .wound-metrics { grid-template-columns: 1fr; }
+    .patient-list-item { padding: 10px; }
+    .grid-3-1 { grid-template-columns: 1fr; }
+  }
+
+  /* === ANIMATIONS === */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-in {
+    animation: fadeIn 0.4s ease forwards;
+    opacity: 0;
+  }
+
+  .delay-1 { animation-delay: 0.05s; }
+  .delay-2 { animation-delay: 0.1s; }
+  .delay-3 { animation-delay: 0.15s; }
+  .delay-4 { animation-delay: 0.2s; }
+  .delay-5 { animation-delay: 0.25s; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left">
+    <div class="logo"><img src="WCE_Specialty_Logo_update_healing.jpeg.jpg" alt="Wound Care Experts"></div>
+    <div>
+      <div class="header-title">Wound Care Experts</div>
+      <div class="header-subtitle">Provider Intelligence Dashboard — Proof of Concept</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="data-badge">
+      <span class="dot"></span>
+      AdvancedMD FHIR Connected
+    </div>
+    <div class="date-range">📅 Jan 1 – Mar 20, 2026</div>
+  </div>
+</header>
+
+<!-- MAIN CONTENT -->
+<div class="main">
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" data-tab="overview">Practice Overview</button>
+    <button class="tab" data-tab="providers">Provider Performance</button>
+    <button class="tab" data-tab="patients">Patient Explorer</button>
+    <button class="tab" data-tab="insights">AI Insights</button>
+  </div>
+
+  <!-- ===================== -->
+  <!-- TAB: OVERVIEW         -->
+  <!-- ===================== -->
+  <div class="tab-content active" id="tab-overview">
+
+    <!-- KPIs -->
+    <div class="kpi-row">
+      <div class="kpi-card teal animate-in delay-1">
+        <div class="kpi-label">Active Patients</div>
+        <div class="kpi-value">247</div>
+        <div class="kpi-delta up">↑ 12% vs prev quarter</div>
+      </div>
+      <div class="kpi-card orange animate-in delay-2">
+        <div class="kpi-label">Open Wounds</div>
+        <div class="kpi-value">312</div>
+        <div class="kpi-delta down">↑ 8% — higher acuity mix</div>
+      </div>
+      <div class="kpi-card green animate-in delay-3">
+        <div class="kpi-label">Healing Rate (90d)</div>
+        <div class="kpi-value">67%</div>
+        <div class="kpi-delta up">↑ 4pts vs baseline</div>
+      </div>
+      <div class="kpi-card red animate-in delay-4">
+        <div class="kpi-label">Avg Days to Heal</div>
+        <div class="kpi-value">58</div>
+        <div class="kpi-delta up">↓ 6 days vs prev quarter</div>
+      </div>
+      <div class="kpi-card purple animate-in delay-5">
+        <div class="kpi-label">Visits / Week</div>
+        <div class="kpi-value">142</div>
+        <div class="kpi-delta up">↑ 9% visit volume</div>
+      </div>
+    </div>
+
+    <!-- CHARTS ROW -->
+    <div class="grid-2">
+      <div class="card animate-in delay-2">
+        <div class="card-header">
+          <div class="card-title">Wound Healing Trajectory — Last 12 Months</div>
+          <span class="card-tag fhir">FHIR Observation</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="healingChart"></canvas>
+        </div>
+      </div>
+      <div class="card animate-in delay-3">
+        <div class="card-header">
+          <div class="card-title">Diagnosis Distribution (ICD-10)</div>
+          <span class="card-tag fhir">FHIR Condition</span>
+        </div>
+        <div class="dx-list" id="dxList"></div>
+      </div>
+    </div>
+
+    <!-- PROVIDER OVERVIEW + TREATMENTS -->
+    <div class="grid-3-1">
+      <div class="card animate-in delay-3">
+        <div class="card-header">
+          <div class="card-title">Provider Performance Snapshot</div>
+          <span class="card-tag connect">Connect API</span>
+        </div>
+        <div class="scroll-y">
+          <table class="provider-table">
+            <thead>
+              <tr>
+                <th>Provider</th>
+                <th>Active Wounds</th>
+                <th>Healing Rate</th>
+                <th>Avg Days</th>
+                <th>Visit Compliance</th>
+                <th>Rating</th>
+              </tr>
+            </thead>
+            <tbody id="providerTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card animate-in delay-4">
+        <div class="card-header">
+          <div class="card-title">Treatment Utilization</div>
+          <span class="card-tag fhir">FHIR Procedure</span>
+        </div>
+        <div class="chart-container-sm">
+          <canvas id="treatmentChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== -->
+  <!-- TAB: PROVIDERS        -->
+  <!-- ===================== -->
+  <div class="tab-content" id="tab-providers">
+    <div class="section-header">Provider Deep Dive <span class="line"></span></div>
+
+    <div class="kpi-row" style="grid-template-columns: repeat(4,1fr); margin-bottom: 24px;">
+      <div class="kpi-card teal">
+        <div class="kpi-label">Total Providers</div>
+        <div class="kpi-value">6</div>
+        <div class="kpi-delta">Across 3 specialties</div>
+      </div>
+      <div class="kpi-card green">
+        <div class="kpi-label">Best Healing Rate</div>
+        <div class="kpi-value">78%</div>
+        <div class="kpi-delta">Dr. N. Wahab — DFU</div>
+      </div>
+      <div class="kpi-card orange">
+        <div class="kpi-label">Debridement Rate</div>
+        <div class="kpi-value">84%</div>
+        <div class="kpi-delta up">↑ 11pts vs Q3 2025</div>
+      </div>
+      <div class="kpi-card purple">
+        <div class="kpi-label">Protocol Adherence</div>
+        <div class="kpi-value">91%</div>
+        <div class="kpi-delta up">↑ 3pts this quarter</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Healing Rate by Provider — Rolling 6 Months</div>
+        </div>
+        <div class="chart-container">
+          <canvas id="providerHealingChart"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Provider Caseload & Acuity</div>
+        </div>
+        <div class="chart-container">
+          <canvas id="caseloadChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 16px;">
+      <div class="card-header">
+        <div class="card-title">Provider Comparison — Key Metrics</div>
+        <span class="card-tag fhir">FHIR + Connect</span>
+      </div>
+      <div class="scroll-y">
+        <table class="provider-table" id="providerDeepTable">
+          <thead>
+            <tr>
+              <th>Provider</th>
+              <th>Specialty</th>
+              <th>Wounds Treated</th>
+              <th>Healed</th>
+              <th>Healing %</th>
+              <th>Avg Days</th>
+              <th>Debride Rate</th>
+              <th>Compression (VLU)</th>
+              <th>Weekly Visit %</th>
+            </tr>
+          </thead>
+          <tbody id="providerDeepBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== -->
+  <!-- TAB: PATIENTS         -->
+  <!-- ===================== -->
+  <div class="tab-content" id="tab-patients">
+    <div class="section-header">Patient Explorer <span class="line"></span></div>
+
+    <div class="grid-3-1">
+      <div>
+        <div class="card" style="margin-bottom: 16px;">
+          <div class="card-header">
+            <div class="card-title" id="selectedPatientTitle">Select a patient →</div>
+            <span class="card-tag fhir">FHIR Patient + Condition</span>
+          </div>
+          <div id="patientDetail">
+            <div style="text-align: center; padding: 60px 0; color: var(--text-3); font-size: 14px;">
+              Choose a patient from the list to view wound history, diagnoses, and treatment timeline.
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Patient List</div>
+        </div>
+        <div class="scroll-y" id="patientList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== -->
+  <!-- TAB: INSIGHTS         -->
+  <!-- ===================== -->
+  <div class="tab-content" id="tab-insights">
+    <div class="section-header">AI-Powered Insights <span class="line"></span></div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Clinical Alerts</div>
+        </div>
+        <div class="insight-card alert">
+          <span class="insight-icon">⚠️</span>
+          <strong>3 patients</strong> with diabetic foot ulcers have shown no measurable wound area reduction in 4+ weeks. Recommend reassessment of offloading protocol and HbA1c review.
+        </div>
+        <div class="insight-card alert">
+          <span class="insight-icon">🔴</span>
+          <strong>Patient R. Martinez</strong> — venous leg ulcer has increased 18% in surface area since last visit. Consider advanced biologics or surgical consultation.
+        </div>
+        <div class="insight-card neutral">
+          <span class="insight-icon">📋</span>
+          <strong>12 patients</strong> are overdue for non-invasive arterial assessment (ABI). This is a USWR quality measure — schedule follow-ups this week.
+        </div>
+        <div class="insight-card positive">
+          <span class="insight-icon">✅</span>
+          <strong>Compression therapy utilization</strong> for VLU patients improved from 72% → 89% this quarter. Protocol adherence trending toward benchmark.
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Operational Recommendations</div>
+        </div>
+        <div class="insight-card neutral">
+          <span class="insight-icon">📊</span>
+          <strong>Tuesday afternoon slots</strong> have 34% cancellation rate — consider overbooking by 1 or shifting wound reassessments to this window.
+        </div>
+        <div class="insight-card positive">
+          <span class="insight-icon">💡</span>
+          <strong>Dr. Wahab's DFU protocol</strong> produces 23% faster healing velocity than practice average. Recommend standardizing her debridement + offloading cadence across all providers.
+        </div>
+        <div class="insight-card neutral">
+          <span class="insight-icon">🔍</span>
+          <strong>HBO utilization</strong> is at 41% for eligible DFU patients (benchmark: 55%). Identify barriers — likely referral lag or insurance pre-auth delays.
+        </div>
+        <div class="insight-card alert">
+          <span class="insight-icon">⏰</span>
+          <strong>Average time from referral to first visit</strong> is 11 days for new wound patients. Industry target is ≤ 7 days. Triage workflow review recommended.
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 16px;">
+      <div class="card-header">
+        <div class="card-title">Risk-Stratified Patient Cohorts</div>
+        <span class="card-tag fhir">FHIR Condition + Observation</span>
+      </div>
+      <div class="chart-container">
+        <canvas id="riskChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer-note">
+    <strong>Proof of Concept</strong> — Simulated data for demonstration purposes only. Production version connects to AdvancedMD via FHIR R4 (read-only) and Connect APIs (CRUD).<br>
+    Data sources: FHIR Patient, Condition, Procedure, Observation, Encounter, Practitioner | Connect API: Scheduling, Billing, Custom Fields<br>
+    Built by <strong>Density</strong> — poweredbydensity.ai
+  </div>
+
+</div>
+
+<script>
+// ========================================
+// FAKE DATA
+// ========================================
+
+const PROVIDERS = [
+  { name: "Dr. Naz Wahab", initials: "NW", role: "Wound Care / Medical Director", color: "#2d4a7a", specialty: "Wound Care", activeWounds: 62, healingRate: 78, avgDays: 48, visitCompliance: 96, woundsTreated: 189, healed: 147, debrideRate: 92, compressionVLU: 94, weeklyVisit: 96 },
+  { name: "Dr. James Chen", initials: "JC", role: "Surgical Podiatry", color: "#d4a732", specialty: "Podiatry", activeWounds: 54, healingRate: 71, avgDays: 55, visitCompliance: 88, woundsTreated: 156, healed: 111, debrideRate: 88, compressionVLU: 78, weeklyVisit: 88 },
+  { name: "Dr. Sarah Okonkwo", initials: "SO", role: "Endocrinology", color: "#4a7ab5", specialty: "Endocrinology", activeWounds: 38, healingRate: 65, avgDays: 62, visitCompliance: 91, woundsTreated: 98, healed: 64, debrideRate: 76, compressionVLU: 82, weeklyVisit: 91 },
+  { name: "NP Lisa Torres", initials: "LT", role: "Wound Care NP", color: "#16a34a", specialty: "Wound Care", activeWounds: 71, healingRate: 69, avgDays: 56, visitCompliance: 93, woundsTreated: 172, healed: 119, debrideRate: 85, compressionVLU: 88, weeklyVisit: 93 },
+  { name: "Dr. Amir Patel", initials: "AP", role: "Infectious Disease", color: "#dc2626", specialty: "Infectious Disease", activeWounds: 45, healingRate: 62, avgDays: 68, visitCompliance: 85, woundsTreated: 112, healed: 69, debrideRate: 71, compressionVLU: 70, weeklyVisit: 85 },
+  { name: "PA Kevin Moore", initials: "KM", role: "Primary Care PA", color: "#6b8db5", specialty: "Primary Care", activeWounds: 42, healingRate: 58, avgDays: 72, visitCompliance: 82, woundsTreated: 95, healed: 55, debrideRate: 68, compressionVLU: 65, weeklyVisit: 82 }
+];
+
+const DIAGNOSES = [
+  { name: "Diabetic Foot Ulcer", code: "E11.621", count: 94, color: "#2d4a7a" },
+  { name: "Venous Leg Ulcer", code: "I87.2", count: 68, color: "#d4a732" },
+  { name: "Pressure Injury", code: "L89.x", count: 52, color: "#4a7ab5" },
+  { name: "Surgical Wound", code: "T81.31", count: 38, color: "#8b5e3c" },
+  { name: "Arterial Ulcer", code: "I70.25", count: 28, color: "#16a34a" },
+  { name: "Traumatic Wound", code: "T14.1", count: 18, color: "#6b8db5" },
+  { name: "Burns", code: "T30.0", count: 14, color: "#dc2626" }
+];
+
+const PATIENTS = [
+  { id: 1, name: "Robert Martinez", dx: "Venous Leg Ulcer — L. Ankle", provider: "Dr. Naz Wahab", wounds: [
+    { type: "Venous Leg Ulcer", location: "Left medial ankle", status: "worsening", areaCm: 12.4, depthMm: 4, durationWeeks: 18, treatments: [
+      { date: "Mar 15", event: "Wound measured at 12.4 cm². <strong>Increased 18%</strong> from prior visit.", color: "#dc2626" },
+      { date: "Mar 8", event: "Compression wrap reapplied. Moderate exudate noted.", color: "#d4a732" },
+      { date: "Feb 28", event: "Debridement performed. Biofilm present.", color: "#2d4a7a" },
+      { date: "Feb 14", event: "Started negative pressure therapy.", color: "#4a7ab5" },
+      { date: "Jan 20", event: "Initial assessment. Wound 10.5 cm², stage III.", color: "#16a34a" }
+    ]}
+  ]},
+  { id: 2, name: "Linda Thompson", dx: "Diabetic Foot Ulcer — R. Plantar", provider: "Dr. Naz Wahab", wounds: [
+    { type: "Diabetic Foot Ulcer", location: "Right plantar metatarsal", status: "healing", areaCm: 3.2, depthMm: 2, durationWeeks: 8, treatments: [
+      { date: "Mar 18", event: "Wound reduced to 3.2 cm². <strong>Healing on track.</strong>", color: "#16a34a" },
+      { date: "Mar 4", event: "Offloading boot fitted. Glucose well controlled.", color: "#2d4a7a" },
+      { date: "Feb 18", event: "Biologic skin substitute applied.", color: "#4a7ab5" },
+      { date: "Feb 1", event: "Initial assessment. Wound 5.8 cm², Wagner Grade 2.", color: "#16a34a" }
+    ]}
+  ]},
+  { id: 3, name: "James O'Brien", dx: "Pressure Injury — Sacral", provider: "NP Lisa Torres", wounds: [
+    { type: "Pressure Injury Stage III", location: "Sacral region", status: "stalled", areaCm: 8.7, depthMm: 6, durationWeeks: 14, treatments: [
+      { date: "Mar 12", event: "No measurable change. <strong>Stalled 3 weeks.</strong>", color: "#d4a732" },
+      { date: "Feb 26", event: "Nutrition consult ordered. Albumin 2.8.", color: "#d4a732" },
+      { date: "Feb 10", event: "Enzymatic debridement. Necrotic tissue present.", color: "#2d4a7a" },
+      { date: "Jan 15", event: "Admitted from SNF. Initial wound 9.1 cm².", color: "#16a34a" }
+    ]}
+  ]},
+  { id: 4, name: "Maria Gonzalez", dx: "Diabetic Foot Ulcer — L. Hallux", provider: "Dr. James Chen", wounds: [
+    { type: "Diabetic Foot Ulcer", location: "Left great toe", status: "healing", areaCm: 1.8, depthMm: 1, durationWeeks: 6, treatments: [
+      { date: "Mar 16", event: "Wound 1.8 cm². <strong>62% reduction from baseline.</strong>", color: "#16a34a" },
+      { date: "Mar 2", event: "TCC applied. Excellent compliance.", color: "#2d4a7a" },
+      { date: "Feb 15", event: "Sharp debridement performed.", color: "#4a7ab5" },
+      { date: "Feb 1", event: "Initial visit. Wound 4.7 cm², HbA1c 7.2.", color: "#16a34a" }
+    ]}
+  ]},
+  { id: 5, name: "William Park", dx: "Arterial Ulcer — R. Foot", provider: "Dr. Amir Patel", wounds: [
+    { type: "Arterial Ulcer", location: "Right dorsal foot", status: "healing", areaCm: 2.4, depthMm: 3, durationWeeks: 10, treatments: [
+      { date: "Mar 14", event: "Post-revascularization. Wound perfusing well.", color: "#16a34a" },
+      { date: "Mar 1", event: "Vascular surgery consult — <strong>PTA performed</strong>.", color: "#4a7ab5" },
+      { date: "Feb 10", event: "ABI 0.4. Referred for vascular eval.", color: "#dc2626" },
+      { date: "Jan 12", event: "Initial wound 4.1 cm². Ischemic margins.", color: "#16a34a" }
+    ]}
+  ]},
+  { id: 6, name: "Dorothy Chen", dx: "Venous Leg Ulcer — Bilateral", provider: "NP Lisa Torres", wounds: [
+    { type: "Venous Leg Ulcer", location: "Right lateral calf", status: "healing", areaCm: 4.2, depthMm: 2, durationWeeks: 12, treatments: [
+      { date: "Mar 17", event: "R calf wound 4.2 cm². Steady improvement.", color: "#16a34a" },
+      { date: "Mar 3", event: "Compression maintained. Edema reducing.", color: "#2d4a7a" },
+      { date: "Feb 15", event: "Started multilayer compression.", color: "#4a7ab5" }
+    ]},
+    { type: "Venous Leg Ulcer", location: "Left medial ankle", status: "healed", areaCm: 0, depthMm: 0, durationWeeks: 12, treatments: [
+      { date: "Mar 10", event: "<strong>Wound fully epithelialized.</strong> Closed.", color: "#16a34a" },
+      { date: "Feb 20", event: "Near closure. 0.3 cm² remaining.", color: "#2d4a7a" }
+    ]}
+  ]},
+  { id: 7, name: "Frank Johnson", dx: "Surgical Wound Dehiscence", provider: "Dr. Sarah Okonkwo", wounds: [
+    { type: "Surgical Wound Dehiscence", location: "Abdominal midline", status: "healing", areaCm: 6.1, depthMm: 8, durationWeeks: 5, treatments: [
+      { date: "Mar 19", event: "Granulation 80%. NPWT continuing.", color: "#16a34a" },
+      { date: "Mar 5", event: "VAC dressing change. Wound bed improving.", color: "#2d4a7a" },
+      { date: "Feb 18", event: "Post-op dehiscence. NPWT initiated.", color: "#dc2626" }
+    ]}
+  ]},
+  { id: 8, name: "Helen Washington", dx: "Diabetic Foot Ulcer — R. 5th Met", provider: "Dr. Naz Wahab", wounds: [
+    { type: "Diabetic Foot Ulcer", location: "Right 5th metatarsal", status: "stalled", areaCm: 5.6, depthMm: 3, durationWeeks: 16, treatments: [
+      { date: "Mar 13", event: "<strong>No progress in 5 weeks.</strong> HbA1c 9.4.", color: "#dc2626" },
+      { date: "Feb 25", event: "Glucose uncontrolled. Endocrine referral.", color: "#d4a732" },
+      { date: "Feb 8", event: "Offloading adjusted. Non-compliant with boot.", color: "#d4a732" },
+      { date: "Dec 1", event: "Initial assessment. Wound 5.2 cm².", color: "#16a34a" }
+    ]}
+  ]}
+];
+
+// ========================================
+// TAB SWITCHING
+// ========================================
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// ========================================
+// RENDER PROVIDER TABLE (OVERVIEW)
+// ========================================
+
+function ratingClass(rate) {
+  if (rate >= 75) return 'excellent';
+  if (rate >= 65) return 'good';
+  if (rate >= 55) return 'fair';
+  return 'needs-improvement';
+}
+
+function ratingLabel(rate) {
+  if (rate >= 75) return 'Excellent';
+  if (rate >= 65) return 'Good';
+  if (rate >= 55) return 'Fair';
+  return 'Review';
+}
+
+const tbody = document.getElementById('providerTableBody');
+PROVIDERS.forEach(p => {
+  const cls = ratingClass(p.healingRate);
+  tbody.innerHTML += `
+    <tr>
+      <td>
+        <div class="provider-name">
+          <div class="provider-avatar" style="background: ${p.color}22; color: ${p.color}">${p.initials}</div>
+          <div class="provider-info">
+            <div class="name">${p.name}</div>
+            <div class="role">${p.role}</div>
+          </div>
+        </div>
+      </td>
+      <td>${p.activeWounds}</td>
+      <td>
+        <span class="mini-bar"><span class="mini-bar-fill" style="width:${p.healingRate}%; background:${p.color}"></span></span>
+        ${p.healingRate}%
+      </td>
+      <td>${p.avgDays}d</td>
+      <td>${p.visitCompliance}%</td>
+      <td><span class="score-badge ${cls}">${ratingLabel(p.healingRate)}</span></td>
+    </tr>
+  `;
+});
+
+// ========================================
+// RENDER PROVIDER DEEP TABLE
+// ========================================
+
+const deepBody = document.getElementById('providerDeepBody');
+PROVIDERS.forEach(p => {
+  deepBody.innerHTML += `
+    <tr>
+      <td><div class="provider-name"><div class="provider-avatar" style="background:${p.color}22; color:${p.color}">${p.initials}</div><div class="provider-info"><div class="name">${p.name}</div></div></div></td>
+      <td>${p.specialty}</td>
+      <td>${p.woundsTreated}</td>
+      <td>${p.healed}</td>
+      <td><strong style="color:${p.healingRate >= 70 ? 'var(--success)' : p.healingRate >= 60 ? 'var(--accent-2)' : 'var(--danger)'}">${p.healingRate}%</strong></td>
+      <td>${p.avgDays}d</td>
+      <td>${p.debrideRate}%</td>
+      <td>${p.compressionVLU}%</td>
+      <td>${p.weeklyVisit}%</td>
+    </tr>
+  `;
+});
+
+// ========================================
+// RENDER DIAGNOSIS BARS
+// ========================================
+
+const dxContainer = document.getElementById('dxList');
+const maxCount = Math.max(...DIAGNOSES.map(d => d.count));
+DIAGNOSES.forEach(d => {
+  const pct = (d.count / maxCount * 100).toFixed(0);
+  dxContainer.innerHTML += `
+    <div class="dx-item">
+      <div class="dx-label">${d.name} <span style="color:var(--text-3); font-size:10px">${d.code}</span></div>
+      <div class="dx-bar-bg">
+        <div class="dx-bar-fill" style="width:${pct}%; background:${d.color}">${d.count}</div>
+      </div>
+    </div>
+  `;
+});
+
+// ========================================
+// RENDER PATIENT LIST
+// ========================================
+
+const patientList = document.getElementById('patientList');
+PATIENTS.forEach(p => {
+  const woundCount = p.wounds.length;
+  patientList.innerHTML += `
+    <div class="patient-list-item" data-id="${p.id}" onclick="selectPatient(${p.id})">
+      <div class="patient-meta">
+        <div class="patient-icon">${p.name.split(' ').map(n=>n[0]).join('')}</div>
+        <div>
+          <div class="patient-name-text">${p.name}</div>
+          <div class="patient-dx">${p.dx}</div>
+        </div>
+      </div>
+      <div class="patient-wounds-count">${woundCount} wound${woundCount > 1 ? 's' : ''}</div>
+    </div>
+  `;
+});
+
+function selectPatient(id) {
+  const p = PATIENTS.find(pt => pt.id === id);
+  if (!p) return;
+
+  document.querySelectorAll('.patient-list-item').forEach(el => el.classList.remove('selected'));
+  document.querySelector(`.patient-list-item[data-id="${id}"]`).classList.add('selected');
+
+  document.getElementById('selectedPatientTitle').textContent = p.name + ' — ' + p.provider;
+
+  let html = '';
+  p.wounds.forEach(w => {
+    html += `
+      <div class="wound-card">
+        <div class="wound-header">
+          <div class="wound-type">${w.type} — ${w.location}</div>
+          <span class="wound-status ${w.status}">${w.status.charAt(0).toUpperCase() + w.status.slice(1)}</span>
+        </div>
+        <div class="wound-metrics">
+          <div class="wound-metric">
+            <div class="wound-metric-val" style="color: var(--accent)">${w.areaCm}</div>
+            <div class="wound-metric-label">Area (cm²)</div>
+          </div>
+          <div class="wound-metric">
+            <div class="wound-metric-val" style="color: var(--accent-2)">${w.depthMm}</div>
+            <div class="wound-metric-label">Depth (mm)</div>
+          </div>
+          <div class="wound-metric">
+            <div class="wound-metric-val" style="color: var(--purple)">${w.durationWeeks}</div>
+            <div class="wound-metric-label">Weeks Open</div>
+          </div>
+        </div>
+        <div class="treatment-timeline">
+          ${w.treatments.map(t => `
+            <div class="timeline-item">
+              <div class="timeline-dot" style="background:${t.color}"></div>
+              <div class="timeline-date">${t.date}</div>
+              <div class="timeline-event">${t.event}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  });
+
+  document.getElementById('patientDetail').innerHTML = html;
+}
+
+// ========================================
+// CHARTS
+// ========================================
+
+const chartDefaults = {
+  color: '#475569',
+  borderColor: '#e4e7ec',
+  font: { family: "'DM Sans', sans-serif" }
+};
+
+Chart.defaults.color = chartDefaults.color;
+Chart.defaults.borderColor = chartDefaults.borderColor;
+Chart.defaults.font.family = chartDefaults.font.family;
+
+// Healing Trajectory
+new Chart(document.getElementById('healingChart'), {
+  type: 'line',
+  data: {
+    labels: ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'],
+    datasets: [
+      {
+        label: 'Healing Rate %',
+        data: [52, 54, 57, 58, 61, 60, 63, 64, 63, 65, 66, 67],
+        borderColor: '#2d4a7a',
+        backgroundColor: 'rgba(45,74,122,0.06)',
+        fill: true,
+        tension: 0.4,
+        pointRadius: 3,
+        pointBackgroundColor: '#2d4a7a',
+        borderWidth: 2
+      },
+      {
+        label: 'National Benchmark',
+        data: [55, 55, 56, 56, 56, 57, 57, 57, 58, 58, 58, 59],
+        borderColor: '#94a3b8',
+        borderDash: [6, 4],
+        fill: false,
+        tension: 0.3,
+        pointRadius: 0,
+        borderWidth: 1.5
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 20, font: { size: 11 } } } },
+    scales: {
+      y: { min: 40, max: 80, grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { font: { size: 11 } } },
+      x: { grid: { display: false }, ticks: { font: { size: 11 } } }
+    }
+  }
+});
+
+// Treatment Utilization
+new Chart(document.getElementById('treatmentChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Debridement', 'Compression', 'NPWT', 'Biologics', 'HBO', 'Offloading'],
+    datasets: [{
+      data: [186, 142, 78, 64, 52, 98],
+      backgroundColor: ['#2d4a7a', '#d4a732', '#4a7ab5', '#8b5e3c', '#16a34a', '#6b8db5'],
+      borderWidth: 0,
+      hoverOffset: 6
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '62%',
+    plugins: {
+      legend: { position: 'right', labels: { boxWidth: 10, padding: 10, font: { size: 11 } } }
+    }
+  }
+});
+
+// Provider Healing Chart
+new Chart(document.getElementById('providerHealingChart'), {
+  type: 'line',
+  data: {
+    labels: ['Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'],
+    datasets: PROVIDERS.map(p => ({
+      label: p.name.split(' ').slice(-1)[0],
+      data: Array.from({length: 6}, (_, i) => {
+        const base = p.healingRate - 8 + Math.random() * 4;
+        return Math.round(base + i * (Math.random() * 2));
+      }),
+      borderColor: p.color,
+      tension: 0.4,
+      pointRadius: 2,
+      borderWidth: 2,
+      fill: false
+    }))
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 14, font: { size: 11 } } } },
+    scales: {
+      y: { min: 40, max: 90, grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { font: { size: 11 } } },
+      x: { grid: { display: false }, ticks: { font: { size: 11 } } }
+    }
+  }
+});
+
+// Caseload Chart
+new Chart(document.getElementById('caseloadChart'), {
+  type: 'bar',
+  data: {
+    labels: PROVIDERS.map(p => p.initials),
+    datasets: [
+      {
+        label: 'High Acuity',
+        data: PROVIDERS.map(p => Math.round(p.activeWounds * 0.35)),
+        backgroundColor: '#dc2626',
+        borderRadius: 4
+      },
+      {
+        label: 'Medium',
+        data: PROVIDERS.map(p => Math.round(p.activeWounds * 0.4)),
+        backgroundColor: '#d4a732',
+        borderRadius: 4
+      },
+      {
+        label: 'Low',
+        data: PROVIDERS.map(p => Math.round(p.activeWounds * 0.25)),
+        backgroundColor: '#16a34a',
+        borderRadius: 4
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 14, font: { size: 11 } } } },
+    scales: {
+      x: { stacked: true, grid: { display: false }, ticks: { font: { size: 11 } } },
+      y: { stacked: true, grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { font: { size: 11 } } }
+    }
+  }
+});
+
+// Risk Stratification Chart
+new Chart(document.getElementById('riskChart'), {
+  type: 'bar',
+  data: {
+    labels: ['DFU (Wagner 1-2)', 'DFU (Wagner 3+)', 'VLU (< 6mo)', 'VLU (> 6mo)', 'Pressure (II-III)', 'Pressure (IV)', 'Surgical', 'Arterial'],
+    datasets: [
+      {
+        label: 'On Track',
+        data: [32, 8, 24, 12, 16, 4, 18, 10],
+        backgroundColor: '#16a34a',
+        borderRadius: 4
+      },
+      {
+        label: 'At Risk',
+        data: [12, 14, 8, 16, 10, 6, 8, 8],
+        backgroundColor: '#d4a732',
+        borderRadius: 4
+      },
+      {
+        label: 'Critical',
+        data: [4, 10, 2, 8, 4, 6, 2, 4],
+        backgroundColor: '#dc2626',
+        borderRadius: 4
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    indexAxis: 'y',
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 14, font: { size: 11 } } } },
+    scales: {
+      x: { stacked: true, grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { font: { size: 11 } } },
+      y: { stacked: true, grid: { display: false }, ticks: { font: { size: 11 } } }
+    }
+  }
+});
+</script>
+</body>
+</html>
