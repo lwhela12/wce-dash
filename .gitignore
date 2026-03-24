@@ -1,0 +1,7 @@
+node_modules/
+.env
+.DS_Store
+data/*.json
+!data/.gitkeep
+private_key.pem
+*.pem

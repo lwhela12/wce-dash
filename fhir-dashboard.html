@@ -1,0 +1,1670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WCE Provider Intelligence Dashboard — FHIR R4</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #f4f6f9;
+    --surface: #ffffff;
+    --surface-2: #f0f2f5;
+    --surface-3: #e4e7ec;
+    --border: #d1d5db;
+    --text: #1e293b;
+    --text-2: #475569;
+    --text-3: #94a3b8;
+    --accent: #2d4a7a;
+    --accent-dim: rgba(45, 74, 122, 0.08);
+    --accent-2: #d4a732;
+    --accent-2-dim: rgba(212, 167, 50, 0.08);
+    --danger: #dc2626;
+    --danger-dim: rgba(220, 38, 38, 0.06);
+    --success: #16a34a;
+    --success-dim: rgba(22, 163, 74, 0.06);
+    --purple: #7c3aed;
+    --purple-dim: rgba(124, 58, 237, 0.06);
+    --radius: 10px;
+    --radius-sm: 6px;
+    --radius-lg: 14px;
+    --font: 'DM Sans', sans-serif;
+    --font-display: 'Fraunces', serif;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* === HEADER === */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 32px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .logo {
+    height: 44px;
+    width: auto;
+  }
+
+  .logo img {
+    height: 100%;
+    width: auto;
+    display: block;
+  }
+
+  .header-title {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+
+  .header-subtitle {
+    font-size: 12px;
+    color: var(--text-3);
+    margin-top: 2px;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .data-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--accent-dim);
+    border: 1px solid rgba(45, 74, 122, 0.15);
+    border-radius: 20px;
+    font-size: 11px;
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .data-badge .dot {
+    width: 6px;
+    height: 6px;
+    background: var(--success);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .date-range {
+    font-size: 13px;
+    color: var(--text-2);
+    padding: 8px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    cursor: pointer;
+  }
+
+  .refresh-btn {
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    font-family: var(--font);
+    font-size: 12px;
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--text-2);
+    transition: background 0.15s;
+  }
+  .refresh-btn:hover { background: var(--surface-3); }
+
+  /* === LAYOUT === */
+  .main {
+    padding: 24px 32px;
+    max-width: 1440px;
+    margin: 0 auto;
+  }
+
+  /* === TABS === */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 24px;
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 4px;
+    border: 1px solid var(--border);
+    width: fit-content;
+  }
+
+  .tab {
+    padding: 10px 20px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--text-3);
+    transition: all 0.2s;
+    border: none;
+    background: none;
+    font-family: var(--font);
+  }
+
+  .tab:hover { color: var(--text-2); }
+
+  .tab.active {
+    background: var(--accent);
+    color: #ffffff;
+    border: 1px solid var(--accent);
+  }
+
+  /* === KPI ROW === */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .kpi-card.teal::before { background: var(--accent); }
+  .kpi-card.orange::before { background: var(--accent-2); }
+  .kpi-card.green::before { background: var(--success); }
+  .kpi-card.red::before { background: var(--danger); }
+  .kpi-card.purple::before { background: var(--purple); }
+
+  .kpi-label {
+    font-size: 11px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+
+  .kpi-value {
+    font-family: var(--font);
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .kpi-card.teal .kpi-value { color: var(--accent); }
+  .kpi-card.orange .kpi-value { color: var(--accent-2); }
+  .kpi-card.green .kpi-value { color: var(--success); }
+  .kpi-card.red .kpi-value { color: var(--danger); }
+  .kpi-card.purple .kpi-value { color: var(--purple); }
+
+  .kpi-delta {
+    font-size: 12px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .kpi-delta.up { color: var(--success); }
+  .kpi-delta.down { color: var(--danger); }
+
+  /* === GRID LAYOUTS === */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .grid-3-1 {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  /* === CARDS === */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    position: relative;
+    box-shadow: var(--shadow);
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .card-tag {
+    font-size: 10px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .card-tag.fhir {
+    background: var(--accent-dim);
+    color: var(--accent);
+    border: 1px solid rgba(45,74,122,0.15);
+  }
+
+  /* === PROVIDER TABLE === */
+  .provider-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .provider-table th {
+    text-align: left;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-3);
+    font-weight: 600;
+    padding: 0 12px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .provider-table td {
+    padding: 14px 12px;
+    font-size: 13px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+
+  .provider-table tr:last-child td { border-bottom: none; }
+
+  .provider-table tr:hover td {
+    background: var(--surface-2);
+  }
+
+  .provider-name {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .provider-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .provider-info .name { font-weight: 600; font-size: 13px; }
+  .provider-info .role { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+
+  .mini-bar {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--surface-3);
+    width: 80px;
+    overflow: hidden;
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 8px;
+  }
+
+  .mini-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 1s ease;
+  }
+
+  .score-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .score-badge.excellent {
+    background: var(--success-dim);
+    color: var(--success);
+  }
+
+  .score-badge.good {
+    background: var(--accent-dim);
+    color: var(--accent);
+  }
+
+  .score-badge.fair {
+    background: var(--accent-2-dim);
+    color: #a07d1c;
+  }
+
+  .score-badge.needs-improvement {
+    background: var(--danger-dim);
+    color: var(--danger);
+  }
+
+  /* === CHART CONTAINERS === */
+  .chart-container {
+    position: relative;
+    height: 260px;
+  }
+
+  .chart-container-sm {
+    position: relative;
+    height: 200px;
+  }
+
+  .chart-container-lg {
+    position: relative;
+    height: 340px;
+  }
+
+  /* === DIAGNOSIS DISTRIBUTION === */
+  .dx-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .dx-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .dx-bar-bg {
+    flex: 1;
+    height: 28px;
+    background: var(--surface-3);
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .dx-bar-fill {
+    height: 100%;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    padding-left: 10px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #ffffff;
+    transition: width 1.2s ease;
+  }
+
+  .dx-label {
+    width: 160px;
+    font-size: 12px;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+
+  .dx-count {
+    width: 40px;
+    text-align: right;
+    font-size: 12px;
+    color: var(--text-2);
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  /* === INSIGHT CARDS === */
+  .insight-card {
+    padding: 14px 16px;
+    border-radius: var(--radius-sm);
+    margin-bottom: 10px;
+    font-size: 13px;
+    line-height: 1.5;
+    border: 1px solid;
+  }
+
+  .insight-card.alert {
+    background: var(--danger-dim);
+    border-color: rgba(220, 38, 38, 0.12);
+    color: #991b1b;
+  }
+
+  .insight-card.positive {
+    background: var(--success-dim);
+    border-color: rgba(22, 163, 74, 0.12);
+    color: #166534;
+  }
+
+  .insight-card.neutral {
+    background: var(--accent-dim);
+    border-color: rgba(45, 74, 122, 0.12);
+    color: #1e3a5f;
+  }
+
+  .insight-card.warning {
+    background: var(--accent-2-dim);
+    border-color: rgba(212, 167, 50, 0.2);
+    color: #7c5e14;
+  }
+
+  .insight-icon { margin-right: 8px; }
+
+  /* === SECTION HEADER === */
+  .section-header {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 16px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-header .line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* === SCROLLABLE === */
+  .scroll-y {
+    max-height: 460px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--surface-3) transparent;
+  }
+
+  .scroll-y::-webkit-scrollbar { width: 4px; }
+  .scroll-y::-webkit-scrollbar-track { background: transparent; }
+  .scroll-y::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 4px; }
+
+  /* === FOOTER NOTE === */
+  .footer-note {
+    text-align: center;
+    padding: 32px;
+    font-size: 11px;
+    color: var(--text-3);
+    border-top: 1px solid var(--border);
+    margin-top: 24px;
+  }
+
+  .footer-note strong { color: var(--accent); }
+
+  /* === TAB CONTENT === */
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* === LOADING === */
+  .loading-overlay {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    flex-direction: column;
+    gap: 16px;
+    color: var(--text-3);
+    font-size: 14px;
+  }
+
+  .spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid var(--surface-3);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .no-data {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-3);
+    font-size: 13px;
+  }
+
+  /* === RESPONSIVE === */
+  @media (max-width: 1100px) {
+    .kpi-row { grid-template-columns: repeat(3, 1fr); }
+    .kpi-row[style*="repeat(4"] { grid-template-columns: repeat(2, 1fr) !important; }
+    .grid-2, .grid-3-1 { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 768px) {
+    .main { padding: 16px; }
+    .kpi-row { grid-template-columns: 1fr 1fr; }
+    .kpi-row[style*="repeat(4"] { grid-template-columns: 1fr 1fr !important; }
+    .header { padding: 12px 16px; flex-wrap: wrap; gap: 10px; }
+    .header-left { gap: 10px; }
+    .logo { height: 36px; }
+    .header-title { font-size: 16px; }
+    .header-subtitle { font-size: 11px; }
+    .header-right { width: 100%; justify-content: flex-start; gap: 8px; flex-wrap: wrap; }
+    .tabs { overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch; }
+    .tab { white-space: nowrap; padding: 8px 14px; font-size: 12px; }
+    .kpi-value { font-size: 26px; }
+    .card { padding: 16px; }
+    .provider-table { font-size: 12px; }
+    .provider-table th, .provider-table td { padding: 10px 8px; }
+    .dx-label { width: 120px; font-size: 11px; }
+    .chart-container { height: 220px; }
+    .chart-container-sm { height: 180px; }
+  }
+
+  @media (max-width: 480px) {
+    .main { padding: 12px; }
+    .kpi-row { grid-template-columns: 1fr; }
+    .kpi-row[style*="repeat(4"] { grid-template-columns: 1fr !important; }
+    .header-right { flex-direction: column; align-items: flex-start; }
+    .date-range { font-size: 12px; }
+    .data-badge { font-size: 10px; }
+    .kpi-value { font-size: 28px; }
+    .provider-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .provider-table thead, .provider-table tbody, .provider-table tr { min-width: 600px; display: table; width: 100%; }
+    .dx-label { width: 100px; }
+    .grid-3-1 { grid-template-columns: 1fr; }
+  }
+
+  /* === ANIMATIONS === */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-in {
+    animation: fadeIn 0.4s ease forwards;
+    opacity: 0;
+  }
+
+  .delay-1 { animation-delay: 0.05s; }
+  .delay-2 { animation-delay: 0.1s; }
+  .delay-3 { animation-delay: 0.15s; }
+  .delay-4 { animation-delay: 0.2s; }
+  .delay-5 { animation-delay: 0.25s; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left">
+    <div class="logo"><img src="WCE_Specialty_Logo_update_healing.jpeg.jpg" alt="Wound Care Experts"></div>
+    <div>
+      <div class="header-title">Wound Care Experts</div>
+      <div class="header-subtitle">Provider Intelligence Dashboard — FHIR R4</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="data-badge" id="dataBadge">
+      <span class="dot" id="statusDot"></span>
+      <span id="statusText">Loading...</span>
+    </div>
+    <button class="refresh-btn" onclick="refreshDashboard()">Refresh Data</button>
+    <div class="date-range" id="dateRange">Loading...</div>
+  </div>
+</header>
+
+<!-- MAIN CONTENT -->
+<div class="main">
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" data-tab="overview">Practice Overview</button>
+    <button class="tab" data-tab="providers">Provider Performance</button>
+    <button class="tab" data-tab="billing">Billing Patterns</button>
+    <button class="tab" data-tab="populations">Patient Populations</button>
+    <button class="tab" data-tab="insights">AI Insights</button>
+  </div>
+
+  <!-- Loading state -->
+  <div id="loadingState" class="loading-overlay">
+    <div class="spinner"></div>
+    <div>Fetching dashboard data...</div>
+  </div>
+
+  <!-- Dashboard content (hidden until data loads) -->
+  <div id="dashboardContent" style="display:none;">
+
+    <!-- ===================== TAB 1: PRACTICE OVERVIEW ===================== -->
+    <div class="tab-content active" id="tab-overview">
+      <div class="kpi-row" id="overviewKpis"></div>
+      <div class="grid-3-1">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Diagnosis Distribution (ICD-10)</span>
+            <span class="card-tag fhir">FHIR Condition</span>
+          </div>
+          <div class="dx-list scroll-y" id="dxList"></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Treatment Utilization</span>
+            <span class="card-tag fhir">FHIR Procedure</span>
+          </div>
+          <div class="chart-container">
+            <canvas id="treatmentUtilChart"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:24px;">
+        <div class="card-header">
+          <span class="card-title">Provider Performance Snapshot</span>
+          <span class="card-tag fhir">FHIR Practitioner</span>
+        </div>
+        <div class="scroll-y">
+          <table class="provider-table" id="overviewProviderTable">
+            <thead><tr><th>Provider</th><th>Active Wounds</th><th>Healing Rate</th><th>Avg Days</th><th>Rating</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== TAB 2: PROVIDER PERFORMANCE ===================== -->
+    <div class="tab-content" id="tab-providers">
+      <div class="kpi-row" style="grid-template-columns:repeat(4,1fr);" id="providerKpis"></div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Healing Rate by Provider</span>
+            <span class="card-tag fhir">FHIR Condition</span>
+          </div>
+          <div class="chart-container"><canvas id="healRateByProviderChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Provider Caseload &amp; Acuity</span>
+            <span class="card-tag fhir">FHIR Encounter</span>
+          </div>
+          <div class="chart-container"><canvas id="caseloadChart"></canvas></div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:24px;">
+        <div class="card-header">
+          <span class="card-title">Provider Comparison</span>
+          <span class="card-tag fhir">FHIR Practitioner</span>
+        </div>
+        <div class="scroll-y">
+          <table class="provider-table" id="providerComparisonTable">
+            <thead><tr><th>Provider</th><th>Active Wounds</th><th>Healed</th><th>Healing Rate</th><th>Avg Days</th><th>Debride Rate</th><th>Pts &gt;16w</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">E/M Code Distribution by Provider</span>
+            <span class="card-tag fhir">FHIR Encounter</span>
+          </div>
+          <div class="chart-container"><canvas id="emByProviderChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Patient Volume (New vs Follow-up)</span>
+            <span class="card-tag fhir">FHIR Encounter</span>
+          </div>
+          <div class="chart-container"><canvas id="newVsFollowupProvChart"></canvas></div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:24px;">
+        <div class="card-header">
+          <span class="card-title">Orders &amp; Referrals Summary</span>
+          <span class="card-tag fhir">FHIR ServiceRequest</span>
+        </div>
+        <div class="scroll-y">
+          <table class="provider-table" id="ordersReferralsTable">
+            <thead><tr><th>Provider</th><th>ABI</th><th>Venous US</th><th>Arterial US</th><th>Labs</th><th>Cultures</th><th>Endo Ref</th><th>Vasc Ref</th><th>Pod Ref</th><th>DME</th><th>Rx</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== TAB 3: BILLING PATTERNS ===================== -->
+    <div class="tab-content" id="tab-billing">
+      <div class="kpi-row" id="billingKpis"></div>
+
+      <div class="section-header">Procedure Codes <span class="line"></span></div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Debridement CPT Codes by Provider</span>
+            <span class="card-tag fhir">FHIR Procedure</span>
+          </div>
+          <div class="chart-container-lg"><canvas id="debrideCptChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Surgical Procedure Codes by Provider</span>
+            <span class="card-tag fhir">FHIR Procedure</span>
+          </div>
+          <div class="chart-container-lg"><canvas id="surgicalCptChart"></canvas></div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">E/M Code Distribution</span>
+            <span class="card-tag fhir">FHIR Encounter</span>
+          </div>
+          <div class="chart-container"><canvas id="emDistChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Compression Codes by Provider</span>
+            <span class="card-tag fhir">FHIR Procedure</span>
+          </div>
+          <div class="chart-container"><canvas id="compressionChart"></canvas></div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Z51.89 Closure Code by Provider</span>
+            <span class="card-tag fhir">FHIR Condition</span>
+          </div>
+          <div class="chart-container"><canvas id="z5189Chart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">MIST / Ultrasonic Orders by Provider</span>
+            <span class="card-tag fhir">FHIR ServiceRequest</span>
+          </div>
+          <div class="chart-container"><canvas id="mistChart"></canvas></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:24px;">
+        <div class="card-header">
+          <span class="card-title">Full Billing Comparison</span>
+          <span class="card-tag fhir">FHIR Procedure</span>
+        </div>
+        <div class="scroll-y" style="max-height:500px;">
+          <table class="provider-table" id="billingComparisonTable">
+            <thead><tr id="billingCompHeader"></tr></thead>
+            <tbody id="billingCompBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="section-header">Clinical Metrics by Provider <span class="line"></span></div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Heal Rate by Provider vs Practice Average</span>
+            <span class="card-tag fhir">FHIR Condition</span>
+          </div>
+          <div class="chart-container"><canvas id="healRateVsAvgChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Avg Days to Heal by Provider</span>
+            <span class="card-tag fhir">FHIR Condition</span>
+          </div>
+          <div class="chart-container"><canvas id="avgDaysChart"></canvas></div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Weekly &amp; Monthly Volume per Provider</span>
+            <span class="card-tag fhir">FHIR Encounter</span>
+          </div>
+          <div class="chart-container"><canvas id="volumeChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">New vs Follow-up Patients</span>
+            <span class="card-tag fhir">FHIR Encounter</span>
+          </div>
+          <div class="chart-container"><canvas id="newFollowChart"></canvas></div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Patients &gt;16 Weeks</span>
+            <span class="card-tag fhir">FHIR Condition</span>
+          </div>
+          <div class="chart-container"><canvas id="over16wChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">ABI Orders (Total vs 30-Day)</span>
+            <span class="card-tag fhir">FHIR ServiceRequest</span>
+          </div>
+          <div class="chart-container"><canvas id="abiChart"></canvas></div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Venous Ultrasound (Total vs 30-Day)</span>
+            <span class="card-tag fhir">FHIR DiagnosticReport</span>
+          </div>
+          <div class="chart-container"><canvas id="venousChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Arterial Ultrasound (Total vs 30-Day)</span>
+            <span class="card-tag fhir">FHIR DiagnosticReport</span>
+          </div>
+          <div class="chart-container"><canvas id="arterialChart"></canvas></div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Labs &amp; Cultures (Total vs 30-Day)</span>
+            <span class="card-tag fhir">FHIR DiagnosticReport</span>
+          </div>
+          <div class="chart-container"><canvas id="labsCulturesChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Specialty Referrals (Endo, Vascular, Podiatry)</span>
+            <span class="card-tag fhir">FHIR ServiceRequest</span>
+          </div>
+          <div class="chart-container"><canvas id="specRefChart"></canvas></div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">ER Sends, Hospice Referrals, Palliative</span>
+            <span class="card-tag fhir">FHIR ServiceRequest</span>
+          </div>
+          <div class="chart-container"><canvas id="erHospiceChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Complete Orders &amp; Referrals</span>
+            <span class="card-tag fhir">FHIR ServiceRequest</span>
+          </div>
+          <div class="scroll-y" style="max-height:260px;">
+            <table class="provider-table" id="completeOrdersTable">
+              <thead><tr id="completeOrdersHeader"></tr></thead>
+              <tbody id="completeOrdersBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== TAB 4: PATIENT POPULATIONS ===================== -->
+    <div class="tab-content" id="tab-populations">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Insurance Carrier Distribution</span>
+            <span class="card-tag fhir">FHIR Coverage</span>
+          </div>
+          <div class="chart-container"><canvas id="insuranceDoughnut"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Patients by Status &amp; Insurance</span>
+            <span class="card-tag fhir">FHIR Coverage</span>
+          </div>
+          <div class="chart-container"><canvas id="insuranceStackedChart"></canvas></div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:24px;">
+        <div class="card-header">
+          <span class="card-title">Insurance Breakdown</span>
+          <span class="card-tag fhir">FHIR Coverage</span>
+        </div>
+        <div class="scroll-y">
+          <table class="provider-table" id="insuranceTable">
+            <thead><tr><th>Carrier</th><th>Active Patients</th><th>% of Total</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== TAB 5: AI INSIGHTS ===================== -->
+    <div class="tab-content" id="tab-insights">
+      <div class="grid-2">
+        <div>
+          <div class="section-header">Clinical Alerts <span class="line"></span></div>
+          <div id="clinicalAlerts"></div>
+        </div>
+        <div>
+          <div class="section-header">Operational Recommendations <span class="line"></span></div>
+          <div id="operationalRecs"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /dashboardContent -->
+
+</div><!-- /main -->
+
+<!-- FOOTER -->
+<div class="footer-note">
+  <strong>Proof of Concept</strong> — Data sourced from AdvancedMD FHIR R4 API (read-only). Resources: Patient, Condition, Procedure, Observation, Encounter, Practitioner, ServiceRequest, MedicationRequest, Coverage, Location, DiagnosticReport. Built by <strong>Density</strong> — poweredbydensity.ai
+</div>
+
+<script>
+// ============================================================
+//  GLOBAL STATE
+// ============================================================
+let DATA = null;
+let chartInstances = {};
+
+// ============================================================
+//  HELPERS
+// ============================================================
+function safeArr(v) { return Array.isArray(v) ? v : []; }
+function safeObj(v) { return v && typeof v === 'object' ? v : {}; }
+function sum(arr, key) { return safeArr(arr).reduce((s, x) => s + (Number(x[key]) || 0), 0); }
+function avg(arr, key) { const a = safeArr(arr); if (!a.length) return 0; return Math.round(sum(a, key) / a.length); }
+function pct(n, d) { return d ? Math.round((n / d) * 100) : 0; }
+function maxBy(arr, key) { return safeArr(arr).reduce((best, x) => (!best || (x[key] || 0) > (best[key] || 0)) ? x : best, null); }
+function minBy(arr, key) { return safeArr(arr).reduce((best, x) => (!best || (x[key] || 0) < (best[key] || 0)) ? x : best, null); }
+function scoreBadge(rate) {
+  if (rate >= 80) return '<span class="score-badge excellent">Excellent</span>';
+  if (rate >= 70) return '<span class="score-badge good">Good</span>';
+  if (rate >= 60) return '<span class="score-badge fair">Fair</span>';
+  return '<span class="score-badge needs-improvement">Needs Review</span>';
+}
+function miniBar(value, max, color) {
+  const w = max ? Math.round((value / max) * 100) : 0;
+  return `<span class="mini-bar"><span class="mini-bar-fill" style="width:${w}%;background:${color}"></span></span>${value}%`;
+}
+function provAvatar(p) {
+  return `<div class="provider-name"><div class="provider-avatar" style="background:${p.color || '#2d4a7a'}20;color:${p.color || '#2d4a7a'}">${p.initials || '?'}</div><div class="provider-info"><div class="name">${p.name || 'Unknown'}</div><div class="role">${p.role || ''}</div></div></div>`;
+}
+function destroyChart(id) {
+  if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
+}
+function makeChart(id, config) {
+  destroyChart(id);
+  const ctx = document.getElementById(id);
+  if (!ctx) return null;
+  chartInstances[id] = new Chart(ctx, config);
+  return chartInstances[id];
+}
+const PALETTE = ['#2d4a7a','#d4a732','#4a7ab5','#16a34a','#dc2626','#6b8db5','#7c3aed','#0ea5e9','#f59e0b','#8b5cf6'];
+function provColor(p, i) { return p.color || PALETTE[i % PALETTE.length]; }
+
+// ============================================================
+//  TAB SWITCHING
+// ============================================================
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ============================================================
+//  DATA FETCH
+// ============================================================
+async function fetchData() {
+  document.getElementById('loadingState').style.display = 'flex';
+  document.getElementById('dashboardContent').style.display = 'none';
+  try {
+    const res = await fetch('/api/dashboard-data');
+    if (!res.ok) throw new Error('API returned ' + res.status);
+    const json = await res.json();
+    DATA = json;
+    renderAll();
+  } catch (e) {
+    console.error('Fetch failed:', e);
+    document.getElementById('loadingState').innerHTML = '<div style="color:var(--danger);font-size:14px;">Failed to load data. Check the server and try again.</div><button class="refresh-btn" onclick="refreshDashboard()" style="margin-top:12px;">Retry</button>';
+  }
+}
+
+function refreshDashboard() { fetchData(); }
+
+// ============================================================
+//  RENDER ALL
+// ============================================================
+function renderAll() {
+  if (!DATA || !DATA.data) return;
+  const d = DATA.data;
+  const providers = safeArr(d.providers);
+  const diagnoses = safeArr(d.diagnoses);
+  const insurance = safeArr(d.insurance);
+  const summary = safeObj(d.summary);
+
+  // Header
+  const src = (DATA.dataSource || 'unknown').charAt(0).toUpperCase() + (DATA.dataSource || 'unknown').slice(1);
+  document.getElementById('statusText').textContent = src + ' Data';
+  document.getElementById('dateRange').textContent = 'Updated: ' + new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+  // Show content
+  document.getElementById('loadingState').style.display = 'none';
+  document.getElementById('dashboardContent').style.display = 'block';
+
+  renderOverview(providers, diagnoses, summary);
+  renderProviders(providers);
+  renderBilling(providers);
+  renderPopulations(insurance);
+  renderInsights(providers, diagnoses);
+}
+
+// ============================================================
+//  TAB 1: PRACTICE OVERVIEW
+// ============================================================
+function renderOverview(providers, diagnoses, summary) {
+  const totalActive = sum(providers, 'activeWounds');
+  const avgHealRate = avg(providers, 'healingRate');
+  const avgDaysHeal = avg(providers, 'avgDays');
+  const visitsWeek = sum(providers, 'weeklyVolume');
+
+  document.getElementById('overviewKpis').innerHTML = `
+    <div class="kpi-card teal animate-in delay-1"><div class="kpi-label">Active Patients</div><div class="kpi-value">${summary.totalPatients || totalActive}</div></div>
+    <div class="kpi-card orange animate-in delay-2"><div class="kpi-label">Open Wounds</div><div class="kpi-value">${totalActive}</div></div>
+    <div class="kpi-card green animate-in delay-3"><div class="kpi-label">Healing Rate</div><div class="kpi-value">${avgHealRate}%</div></div>
+    <div class="kpi-card purple animate-in delay-4"><div class="kpi-label">Avg Days to Heal</div><div class="kpi-value">${avgDaysHeal}</div></div>
+    <div class="kpi-card teal animate-in delay-5"><div class="kpi-label">Visits / Week</div><div class="kpi-value">${visitsWeek}</div></div>
+  `;
+
+  // Diagnosis distribution
+  const maxDx = diagnoses.length ? Math.max(...diagnoses.map(d => d.count || 0)) : 1;
+  document.getElementById('dxList').innerHTML = diagnoses.length
+    ? diagnoses.map(dx => `<div class="dx-item"><div class="dx-label">${dx.name} <span style="color:var(--text-3);font-size:10px;">(${dx.code})</span></div><div class="dx-bar-bg"><div class="dx-bar-fill" style="width:${pct(dx.count, maxDx)}%;background:${dx.color || '#2d4a7a'}">${dx.count}</div></div><div class="dx-count">${dx.count}</div></div>`).join('')
+    : '<div class="no-data">No diagnosis data available</div>';
+
+  // Provider performance snapshot table
+  const tbody = document.querySelector('#overviewProviderTable tbody');
+  tbody.innerHTML = providers.length
+    ? providers.map(p => `<tr><td>${provAvatar(p)}</td><td>${p.activeWounds || 0}</td><td>${miniBar(p.healingRate || 0, 100, p.color || '#2d4a7a')}</td><td>${p.avgDays || 0} days</td><td>${scoreBadge(p.healingRate || 0)}</td></tr>`).join('')
+    : '<tr><td colspan="5" class="no-data">No provider data</td></tr>';
+
+  // Treatment utilization doughnut
+  const totalDebride = sum(providers, 'woundsTreated') - sum(providers, 'healed'); // approximation
+  const totalCompress = providers.reduce((s, p) => s + Object.values(safeObj(p.compressionCodes)).reduce((a, b) => a + b, 0), 0);
+  const totalProcs = providers.reduce((s, p) => s + Object.values(safeObj(p.surgicalCPT)).reduce((a, b) => a + b, 0), 0);
+  const totalDebrideCt = providers.reduce((s, p) => s + Object.values(safeObj(p.debridementCPT)).reduce((a, b) => a + b, 0), 0);
+  makeChart('treatmentUtilChart', {
+    type: 'doughnut',
+    data: {
+      labels: ['Debridement', 'Compression', 'Surgical Procedures'],
+      datasets: [{ data: [totalDebrideCt, totalCompress, totalProcs], backgroundColor: ['#2d4a7a','#d4a732','#16a34a'], borderWidth: 0 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: "'DM Sans'" }, padding: 16 } } } }
+  });
+}
+
+// ============================================================
+//  TAB 2: PROVIDER PERFORMANCE
+// ============================================================
+function renderProviders(providers) {
+  const bestHealRate = providers.length ? Math.max(...providers.map(p => p.healingRate || 0)) : 0;
+  const avgDebride = avg(providers, 'debrideRate');
+  const avgAdherence = providers.length ? Math.round(providers.reduce((s, p) => s + (p.debrideRate || 0), 0) / providers.length) : 0;
+
+  document.getElementById('providerKpis').innerHTML = `
+    <div class="kpi-card teal animate-in delay-1"><div class="kpi-label">Total Providers</div><div class="kpi-value">${providers.length}</div></div>
+    <div class="kpi-card green animate-in delay-2"><div class="kpi-label">Best Healing Rate</div><div class="kpi-value">${bestHealRate}%</div></div>
+    <div class="kpi-card orange animate-in delay-3"><div class="kpi-label">Debridement Rate</div><div class="kpi-value">${avgDebride}%</div></div>
+    <div class="kpi-card purple animate-in delay-4"><div class="kpi-label">Protocol Adherence</div><div class="kpi-value">${avgAdherence}%</div></div>
+  `;
+
+  // Healing Rate by Provider
+  makeChart('healRateByProviderChart', {
+    type: 'bar',
+    data: {
+      labels: providers.map(p => p.name),
+      datasets: [{ label: 'Healing Rate %', data: providers.map(p => p.healingRate || 0), backgroundColor: providers.map((p, i) => provColor(p, i)), borderRadius: 4 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } }, plugins: { legend: { display: false } } }
+  });
+
+  // Provider Caseload & Acuity (stacked: active + >16w + palliative)
+  makeChart('caseloadChart', {
+    type: 'bar',
+    data: {
+      labels: providers.map(p => p.name),
+      datasets: [
+        { label: 'Active Wounds', data: providers.map(p => p.activeWounds || 0), backgroundColor: '#2d4a7a', borderRadius: 4 },
+        { label: '>16 Weeks', data: providers.map(p => p.ptsOver16w || 0), backgroundColor: '#d4a732', borderRadius: 4 },
+        { label: 'Palliative', data: providers.map(p => p.palliativePts || 0), backgroundColor: '#dc2626', borderRadius: 4 }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }, plugins: { legend: { position: 'bottom', labels: { font: { family: "'DM Sans'" } } } } }
+  });
+
+  // Provider Comparison table
+  const tbody = document.querySelector('#providerComparisonTable tbody');
+  tbody.innerHTML = providers.length
+    ? providers.map(p => `<tr><td>${provAvatar(p)}</td><td>${p.activeWounds || 0}</td><td>${p.healed || 0}</td><td>${miniBar(p.healingRate || 0, 100, p.color || '#2d4a7a')}</td><td>${p.avgDays || 0}</td><td>${p.debrideRate || 0}%</td><td>${p.ptsOver16w || 0}</td></tr>`).join('')
+    : '<tr><td colspan="7" class="no-data">No data</td></tr>';
+
+  // E/M Code Distribution by Provider (stacked bar)
+  const emCodes = ['99211','99212','99213','99214','99215','99232','99233'];
+  const emColors = ['#6b8db5','#4a7ab5','#2d4a7a','#d4a732','#16a34a','#dc2626','#7c3aed'];
+  makeChart('emByProviderChart', {
+    type: 'bar',
+    data: {
+      labels: providers.map(p => p.name),
+      datasets: emCodes.map((code, ci) => ({
+        label: code,
+        data: providers.map(p => (safeObj(p.emCodes)[code]) || 0),
+        backgroundColor: emColors[ci],
+        borderRadius: 2
+      }))
+    },
+    options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }, plugins: { legend: { position: 'bottom', labels: { font: { family: "'DM Sans'", size: 10 } } } } }
+  });
+
+  // New vs Follow-up (grouped bar)
+  makeChart('newVsFollowupProvChart', {
+    type: 'bar',
+    data: {
+      labels: providers.map(p => p.name),
+      datasets: [
+        { label: 'New Patients', data: providers.map(p => p.newPatients || 0), backgroundColor: '#2d4a7a', borderRadius: 4 },
+        { label: 'Follow-up', data: providers.map(p => p.followupPatients || 0), backgroundColor: '#d4a732', borderRadius: 4 }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { position: 'bottom', labels: { font: { family: "'DM Sans'" } } } } }
+  });
+
+  // Orders & Referrals Summary table
+  const otbody = document.querySelector('#ordersReferralsTable tbody');
+  otbody.innerHTML = providers.length
+    ? providers.map(p => `<tr><td>${provAvatar(p)}</td><td>${p.abiOrders || 0}</td><td>${p.venousUS || 0}</td><td>${p.arterialUS || 0}</td><td>${p.labOrders || 0}</td><td>${p.cultureOrders || 0}</td><td>${p.endoRef || 0}</td><td>${p.vascRef || 0}</td><td>${p.podRef || 0}</td><td>${p.dmeOrders || 0}</td><td>${p.rxWritten || 0}</td></tr>`).join('')
+    : '<tr><td colspan="11" class="no-data">No data</td></tr>';
+}
+
+// ============================================================
+//  TAB 3: BILLING PATTERNS
+// ============================================================
+function renderBilling(providers) {
+  const totalDebridements = providers.reduce((s, p) => s + Object.values(safeObj(p.debridementCPT)).reduce((a, b) => a + b, 0), 0);
+  const totalEM = providers.reduce((s, p) => s + Object.values(safeObj(p.emCodes)).reduce((a, b) => a + b, 0), 0);
+  const totalZ5189 = sum(providers, 'z5189Count');
+  const totalCompression = providers.reduce((s, p) => s + Object.values(safeObj(p.compressionCodes)).reduce((a, b) => a + b, 0), 0);
+  const totalMist = sum(providers, 'mistOrders');
+
+  document.getElementById('billingKpis').innerHTML = `
+    <div class="kpi-card teal animate-in delay-1"><div class="kpi-label">Total Debridements</div><div class="kpi-value">${totalDebridements}</div></div>
+    <div class="kpi-card orange animate-in delay-2"><div class="kpi-label">Total E/M Visits</div><div class="kpi-value">${totalEM}</div></div>
+    <div class="kpi-card green animate-in delay-3"><div class="kpi-label">Z51.89 Closures</div><div class="kpi-value">${totalZ5189}</div></div>
+    <div class="kpi-card purple animate-in delay-4"><div class="kpi-label">Compression Orders</div><div class="kpi-value">${totalCompression}</div></div>
+    <div class="kpi-card red animate-in delay-5"><div class="kpi-label">MIST Orders</div><div class="kpi-value">${totalMist}</div></div>
+  `;
+
+  // Debridement CPT Codes by Provider (stacked bar)
+  const debrideCodes = ['97597','97598','97602','11042','11043','11044'];
+  const debrideColors = ['#2d4a7a','#4a7ab5','#6b8db5','#d4a732','#16a34a','#dc2626'];
+  makeChart('debrideCptChart', {
+    type: 'bar',
+    data: {
+      labels: providers.map(p => p.name),
+      datasets: debrideCodes.map((code, ci) => ({
+        label: code,
+        data: providers.map(p => (safeObj(p.debridementCPT)[code]) || 0),
+        backgroundColor: debrideColors[ci],
+        borderRadius: 2
+      }))
+    },
+    options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }, plugins: { legend: { position: 'bottom', labels: { font: { family: "'DM Sans'", size: 10 } } } } }
+  });
+
+  // Surgical CPT Codes by Provider (stacked bar)
+  const allSurgCodes = [...new Set(providers.flatMap(p => Object.keys(safeObj(p.surgicalCPT))))];
+  const surgColors = ['#2d4a7a','#d4a732','#4a7ab5','#16a34a','#dc2626','#7c3aed','#6b8db5','#0ea5e9'];
+  makeChart('surgicalCptChart', {
+    type: 'bar',
+    data: {
+      labels: providers.map(p => p.name),
+      datasets: allSurgCodes.map((code, ci) => ({
+        label: code,
+        data: providers.map(p => (safeObj(p.surgicalCPT)[code]) || 0),
+        backgroundColor: surgColors[ci % surgColors.length],
+        borderRadius: 2
+      }))
+    },
+    options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }, plugins: { legend: { position: 'bottom', labels: { font: { family: "'DM Sans'", size: 10 } } } } }
+  });
+
+  // E/M Code Distribution (full breakdown)
+  const emCodes = ['99211','99212','99213','99214','99215','99232','99233'];
+  const emColors = ['#6b8db5','#4a7ab5','#2d4a7a','#d4a732','#16a34a','#dc2626','#7c3aed'];
+  makeChart('emDistChart', {
+    type: 'bar',
+    data: {
+      labels: providers.map(p => p.name),
+      datasets: emCodes.map((code, ci) => ({
+        label: code,
+        data: providers.map(p => (safeObj(p.emCodes)[code]) || 0),
+        backgroundColor: emColors[ci],
+        borderRadius: 2
+      }))
+    },
+    options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }, plugins: { legend: { position: 'bottom', labels: { font: { family: "'DM Sans'", size: 10 } } } } }
+  });
+
+  // Compression Codes by Provider (stacked bar)
+  const allCompCodes = [...new Set(providers.flatMap(p => Object.keys(safeObj(p.compressionCodes))))];
+  const compColors = ['#2d4a7a','#d4a732','#4a7ab5','#16a34a','#7c3aed','#dc2626'];
+  makeChart('compressionChart', {
+    type: 'bar',
+    data: {
+      labels: providers.map(p => p.name),
+      datasets: allCompCodes.map((code, ci) => ({
+        label: code,
+        data: providers.map(p => (safeObj(p.compressionCodes)[code]) || 0),
+        backgroundColor: compColors[ci % compColors.length],
+        borderRadius: 2
+      }))
+    },
+    options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }, plugins: { legend: { position: 'bottom', labels: { font: { family: "'DM Sans'", size: 10 } } } } }
+  });
+
+  // Z51.89 by Provider
+  makeChart('z5189Chart', {
+    type: 'bar',
+    data: {
+      labels: providers.map(p => p.name),
+      datasets: [{ label: 'Z51.89 Closures', data: providers.map(p => p.z5189Count || 0), backgroundColor: providers.map((p, i) => provColor(p, i)), borderRadius: 4 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { display: false } } }
+  });
+
+  // MIST Orders by Provider
+  makeChart('mistChart', {
+    type: 'bar',
+    data: {
+      labels: providers.map(p => p.name),
+      datasets: [{ label: 'MIST Orders', data: providers.map(p => p.mistOrders || 0), backgroundColor: providers.map((p, i) => provColor(p, i)), borderRadius: 4 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { display: false } } }
+  });
+
+  // Full Billing Comparison Table
+  const billingRows = [
+    { label: 'Total Debridements', key: p => Object.values(safeObj(p.debridementCPT)).reduce((a,b) => a+b, 0) },
+    { label: 'CPT 97597', key: p => (safeObj(p.debridementCPT)['97597']) || 0 },
+    { label: 'CPT 97598', key: p => (safeObj(p.debridementCPT)['97598']) || 0 },
+    { label: 'CPT 97602', key: p => (safeObj(p.debridementCPT)['97602']) || 0 },
+    { label: 'CPT 11042', key: p => (safeObj(p.debridementCPT)['11042']) || 0 },
+    { label: 'CPT 11043', key: p => (safeObj(p.debridementCPT)['11043']) || 0 },
+    { label: 'CPT 11044', key: p => (safeObj(p.debridementCPT)['11044']) || 0 },
+    { label: 'Total E/M', key: p => Object.values(safeObj(p.emCodes)).reduce((a,b) => a+b, 0) },
+    { label: 'Compression Total', key: p => Object.values(safeObj(p.compressionCodes)).reduce((a,b) => a+b, 0) },
+    { label: 'Z51.89 Closures', key: p => p.z5189Count || 0 },
+    { label: 'MIST Orders', key: p => p.mistOrders || 0 },
+    { label: 'Healing Rate', key: p => (p.healingRate || 0) + '%' },
+    { label: 'Avg Days to Heal', key: p => p.avgDays || 0 },
+  ];
+  document.getElementById('billingCompHeader').innerHTML = '<th>Metric</th>' + providers.map(p => `<th>${p.name}</th>`).join('');
+  document.getElementById('billingCompBody').innerHTML = billingRows.map(row =>
+    '<tr><td style="font-weight:600;">' + row.label + '</td>' + providers.map(p => '<td>' + row.key(p) + '</td>').join('') + '</tr>'
+  ).join('');
+
+  // Heal Rate vs Practice Average
+  const practiceAvg = avg(providers, 'healingRate');
+  makeChart('healRateVsAvgChart', {
+    type: 'bar',
+    data: {
+      labels: providers.map(p => p.name),
+      datasets: [
+        { label: 'Provider', data: providers.map(p => p.healingRate || 0), backgroundColor: providers.map((p, i) => provColor(p, i)), borderRadius: 4 },
+        { label: 'Practice Avg', data: providers.map(() => practiceAvg), type: 'line', borderColor: '#dc2626', borderDash: [6, 3], pointRadius: 0, borderWidth: 2, fill: false }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } }, plugins: { legend: { position: 'bottom', labels: { font: { family: "'DM Sans'" } } } } }
+  });
+
+  // Avg Days to Heal
+  makeChart('avgDaysChart', {
+    type: 'bar',
+    data: {
+      labels: providers.map(p => p.name),
+      datasets: [{ label: 'Avg Days', data: providers.map(p => p.avgDays || 0), backgroundColor: providers.map((p, i) => provColor(p, i)), borderRadius: 4 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { display: false } } }
+  });
+
+  // Weekly & Monthly Volume
+  makeChart('volumeChart', {
+    type: 'bar',
+    data: {
+      labels: providers.map(p => p.name),
+      datasets: [
+        { label: 'Weekly', data: providers.map(p => p.weeklyVolume || 0), backgroundColor: '#2d4a7a', borderRadius: 4 },
+        { label: 'Monthly', data: providers.map(p => p.monthlyVolume || 0), backgroundColor: '#d4a732', borderRadius: 4 }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { position: 'bottom', labels: { font: { family: "'DM Sans'" } } } } }
+  });
+
+  // New vs Follow-up
+  makeChart('newFollowChart', {
+    type: 'bar',
+    data: {
+      labels: providers.map(p => p.name),
+      datasets: [
+        { label: 'New', data: providers.map(p => p.newPatients || 0), backgroundColor: '#2d4a7a', borderRadius: 4 },
+        { label: 'Follow-up', data: providers.map(p => p.followupPatients || 0), backgroundColor: '#4a7ab5', borderRadius: 4 }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { position: 'bottom', labels: { font: { family: "'DM Sans'" } } } } }
+  });
+
+  // Patients >16 Weeks
+  makeChart('over16wChart', {
+    type: 'bar',
+    data: {
+      labels: providers.map(p => p.name),
+      datasets: [{ label: 'Patients >16w', data: providers.map(p => p.ptsOver16w || 0), backgroundColor: providers.map((p, i) => provColor(p, i)), borderRadius: 4 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { display: false } } }
+  });
+
+  // ABI Orders (total vs 30d)
+  makeChart('abiChart', {
+    type: 'bar',
+    data: {
+      labels: providers.map(p => p.name),
+      datasets: [
+        { label: 'Total ABI', data: providers.map(p => p.abiOrders || 0), backgroundColor: '#2d4a7a', borderRadius: 4 },
+        { label: 'Within 30 Days', data: providers.map(p => p.abiOrders30d || 0), backgroundColor: '#16a34a', borderRadius: 4 }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { position: 'bottom', labels: { font: { family: "'DM Sans'" } } } } }
+  });
+
+  // Venous US
+  makeChart('venousChart', {
+    type: 'bar',
+    data: {
+      labels: providers.map(p => p.name),
+      datasets: [
+        { label: 'Total Venous US', data: providers.map(p => p.venousUS || 0), backgroundColor: '#2d4a7a', borderRadius: 4 },
+        { label: 'Within 30 Days', data: providers.map(p => p.venousUS30d || 0), backgroundColor: '#16a34a', borderRadius: 4 }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { position: 'bottom', labels: { font: { family: "'DM Sans'" } } } } }
+  });
+
+  // Arterial US
+  makeChart('arterialChart', {
+    type: 'bar',
+    data: {
+      labels: providers.map(p => p.name),
+      datasets: [
+        { label: 'Total Arterial US', data: providers.map(p => p.arterialUS || 0), backgroundColor: '#2d4a7a', borderRadius: 4 },
+        { label: 'Within 30 Days', data: providers.map(p => p.arterialUS30d || 0), backgroundColor: '#16a34a', borderRadius: 4 }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { position: 'bottom', labels: { font: { family: "'DM Sans'" } } } } }
+  });
+
+  // Labs & Cultures
+  makeChart('labsCulturesChart', {
+    type: 'bar',
+    data: {
+      labels: providers.map(p => p.name),
+      datasets: [
+        { label: 'Labs Total', data: providers.map(p => p.labOrders || 0), backgroundColor: '#2d4a7a', borderRadius: 4 },
+        { label: 'Labs 30d', data: providers.map(p => p.labOrders30d || 0), backgroundColor: '#4a7ab5', borderRadius: 4 },
+        { label: 'Cultures Total', data: providers.map(p => p.cultureOrders || 0), backgroundColor: '#d4a732', borderRadius: 4 },
+        { label: 'Cultures 30d', data: providers.map(p => p.cultureOrders30d || 0), backgroundColor: '#16a34a', borderRadius: 4 }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { position: 'bottom', labels: { font: { family: "'DM Sans'", size: 10 } } } } }
+  });
+
+  // Specialty Referrals
+  makeChart('specRefChart', {
+    type: 'bar',
+    data: {
+      labels: providers.map(p => p.name),
+      datasets: [
+        { label: 'Endocrinology', data: providers.map(p => p.endoRef || 0), backgroundColor: '#2d4a7a', borderRadius: 4 },
+        { label: 'Vascular', data: providers.map(p => p.vascRef || 0), backgroundColor: '#d4a732', borderRadius: 4 },
+        { label: 'Podiatry', data: providers.map(p => p.podRef || 0), backgroundColor: '#16a34a', borderRadius: 4 }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { position: 'bottom', labels: { font: { family: "'DM Sans'" } } } } }
+  });
+
+  // ER Sends, Hospice, Palliative
+  makeChart('erHospiceChart', {
+    type: 'bar',
+    data: {
+      labels: providers.map(p => p.name),
+      datasets: [
+        { label: 'ER Sends', data: providers.map(p => p.erSends || 0), backgroundColor: '#dc2626', borderRadius: 4 },
+        { label: 'Hospice Referrals', data: providers.map(p => p.hospiceRef || 0), backgroundColor: '#7c3aed', borderRadius: 4 },
+        { label: 'Palliative', data: providers.map(p => p.palliativePts || 0), backgroundColor: '#d4a732', borderRadius: 4 }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { position: 'bottom', labels: { font: { family: "'DM Sans'" } } } } }
+  });
+
+  // Complete Orders & Referrals Table
+  const orderRows = [
+    { label: 'ABI Orders', key: 'abiOrders' }, { label: 'ABI (30d)', key: 'abiOrders30d' },
+    { label: 'Venous US', key: 'venousUS' }, { label: 'Venous US (30d)', key: 'venousUS30d' },
+    { label: 'Arterial US', key: 'arterialUS' }, { label: 'Arterial US (30d)', key: 'arterialUS30d' },
+    { label: 'Lab Orders', key: 'labOrders' }, { label: 'Lab Orders (30d)', key: 'labOrders30d' },
+    { label: 'Culture Orders', key: 'cultureOrders' }, { label: 'Culture Orders (30d)', key: 'cultureOrders30d' },
+    { label: 'Endo Referrals', key: 'endoRef' }, { label: 'Vasc Referrals', key: 'vascRef' },
+    { label: 'Pod Referrals', key: 'podRef' }, { label: 'DME Orders', key: 'dmeOrders' },
+    { label: 'Rx Written', key: 'rxWritten' }, { label: 'Radiology', key: 'radiologyOrders' },
+    { label: 'Hospice Ref', key: 'hospiceRef' }, { label: 'ER Sends', key: 'erSends' },
+    { label: 'MIST Orders', key: 'mistOrders' }
+  ];
+  document.getElementById('completeOrdersHeader').innerHTML = '<th>Metric</th>' + providers.map(p => `<th>${p.name}</th>`).join('');
+  document.getElementById('completeOrdersBody').innerHTML = orderRows.map(row =>
+    '<tr><td style="font-weight:600;">' + row.label + '</td>' + providers.map(p => '<td>' + (p[row.key] || 0) + '</td>').join('') + '</tr>'
+  ).join('');
+}
+
+// ============================================================
+//  TAB 4: PATIENT POPULATIONS
+// ============================================================
+function renderPopulations(insurance) {
+  if (!insurance.length) {
+    document.getElementById('tab-populations').innerHTML = '<div class="no-data">No insurance data available</div>';
+    return;
+  }
+
+  const totalIns = insurance.reduce((s, i) => s + (i.activePatients || 0), 0);
+
+  // Insurance Doughnut
+  makeChart('insuranceDoughnut', {
+    type: 'doughnut',
+    data: {
+      labels: insurance.map(i => i.name),
+      datasets: [{ data: insurance.map(i => i.activePatients || 0), backgroundColor: insurance.map((i, idx) => i.color || PALETTE[idx % PALETTE.length]), borderWidth: 0 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: "'DM Sans'" }, padding: 12 } } } }
+  });
+
+  // Stacked bar (patients by insurance)
+  makeChart('insuranceStackedChart', {
+    type: 'bar',
+    data: {
+      labels: insurance.map(i => i.name),
+      datasets: [{ label: 'Active Patients', data: insurance.map(i => i.activePatients || 0), backgroundColor: insurance.map((i, idx) => i.color || PALETTE[idx % PALETTE.length]), borderRadius: 4 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', scales: { x: { beginAtZero: true } }, plugins: { legend: { display: false } } }
+  });
+
+  // Insurance table
+  const tbody = document.querySelector('#insuranceTable tbody');
+  tbody.innerHTML = insurance.map(i => `<tr><td style="font-weight:600;">${i.name}</td><td>${i.activePatients || 0}</td><td>${pct(i.activePatients || 0, totalIns)}%</td></tr>`).join('');
+}
+
+// ============================================================
+//  TAB 5: AI INSIGHTS
+// ============================================================
+function renderInsights(providers, diagnoses) {
+  if (!providers.length) {
+    document.getElementById('clinicalAlerts').innerHTML = '<div class="no-data">No data available for insights</div>';
+    document.getElementById('operationalRecs').innerHTML = '';
+    return;
+  }
+
+  const alerts = [];
+  const recs = [];
+
+  // Find best/worst healing rates
+  const best = maxBy(providers, 'healingRate');
+  const worst = minBy(providers, 'healingRate');
+  const practiceAvg = avg(providers, 'healingRate');
+
+  // Stalled wounds / overdue assessments
+  const totalOver16 = sum(providers, 'ptsOver16w');
+  if (totalOver16 > 0) {
+    const highOver16 = maxBy(providers, 'ptsOver16w');
+    alerts.push({ type: 'alert', text: `<strong>${totalOver16} patients</strong> have wounds open >16 weeks. ${highOver16.name} has the highest count (${highOver16.ptsOver16w}). Consider wound care pathway review for stalled cases.` });
+  }
+
+  // Low healing rate providers
+  providers.forEach(p => {
+    if ((p.healingRate || 0) < practiceAvg - 10) {
+      alerts.push({ type: 'alert', text: `<strong>${p.name}</strong> has a healing rate of ${p.healingRate}%, which is ${practiceAvg - p.healingRate}% below practice average (${practiceAvg}%). Review treatment protocols and case mix.` });
+    }
+  });
+
+  // Palliative patients
+  const totalPalliative = sum(providers, 'palliativePts');
+  if (totalPalliative > 0) {
+    alerts.push({ type: 'warning', text: `<strong>${totalPalliative} palliative patients</strong> across all providers. Ensure hospice coordination and comfort care documentation is up to date.` });
+  }
+
+  // ER sends
+  const totalER = sum(providers, 'erSends');
+  if (totalER > 0) {
+    alerts.push({ type: 'alert', text: `<strong>${totalER} ER sends</strong> in the current period. Monitor for patterns — infection, falls, or acute wound deterioration.` });
+  }
+
+  // Protocol adherence
+  providers.forEach(p => {
+    if ((p.debrideRate || 0) < 80) {
+      alerts.push({ type: 'warning', text: `<strong>${p.name}</strong> debridement rate is ${p.debrideRate}% (target: 80%+). Low debridement utilization may impact healing velocity.` });
+    }
+  });
+
+  // Best performer
+  if (best) {
+    recs.push({ type: 'positive', text: `<strong>${best.name}</strong> leads with a ${best.healingRate}% healing rate and ${best.avgDays}-day average heal time. Their protocols could serve as a benchmark for the practice.` });
+  }
+
+  // Compression utilization
+  const totalCompress = providers.reduce((s, p) => s + Object.values(safeObj(p.compressionCodes)).reduce((a, b) => a + b, 0), 0);
+  const totalActive = sum(providers, 'activeWounds');
+  const compRate = pct(totalCompress, totalActive);
+  if (compRate < 50) {
+    recs.push({ type: 'neutral', text: `Compression utilization is at <strong>${compRate}%</strong> relative to active wounds. Industry best practice targets 60-70%+ compression for venous leg ulcers. Consider increasing compression therapy orders.` });
+  } else {
+    recs.push({ type: 'positive', text: `Compression utilization is strong at <strong>${compRate}%</strong> relative to active wounds. This aligns with best practice guidelines for venous wound management.` });
+  }
+
+  // Healing velocity comparison
+  const avgDays = avg(providers, 'avgDays');
+  if (avgDays > 50) {
+    recs.push({ type: 'neutral', text: `Practice average days to heal is <strong>${avgDays} days</strong>. Industry benchmark for uncomplicated wounds is 30-45 days. Evaluate case complexity and consider advanced modalities for stalled wounds.` });
+  } else {
+    recs.push({ type: 'positive', text: `Practice average days to heal (<strong>${avgDays} days</strong>) is within or below the industry benchmark of 30-45 days. Strong clinical performance.` });
+  }
+
+  // MIST therapy
+  const totalMist = sum(providers, 'mistOrders');
+  if (totalMist > 0) {
+    recs.push({ type: 'neutral', text: `<strong>${totalMist} MIST/ultrasonic therapy orders</strong> placed. MIST therapy can accelerate healing in chronic wounds. Track outcomes vs non-MIST patients to validate efficacy.` });
+  }
+
+  // Diagnostic ordering
+  const totalABI = sum(providers, 'abiOrders');
+  const totalABI30 = sum(providers, 'abiOrders30d');
+  const abiCompliance = pct(totalABI30, totalABI);
+  if (totalABI > 0 && abiCompliance < 80) {
+    recs.push({ type: 'warning', text: `ABI 30-day ordering compliance is <strong>${abiCompliance}%</strong>. ${100 - abiCompliance}% of ABI orders were placed outside the initial 30-day assessment window.` });
+  }
+
+  // Referral patterns
+  const totalEndoRef = sum(providers, 'endoRef');
+  const diabeticDx = diagnoses.filter(d => (d.code || '').startsWith('E11')).reduce((s, d) => s + (d.count || 0), 0);
+  if (diabeticDx > 0 && totalEndoRef > 0) {
+    recs.push({ type: 'neutral', text: `<strong>${totalEndoRef} endocrinology referrals</strong> for ${diabeticDx} diabetic wound patients. Ensure A1c optimization is part of the care plan for all diabetic wound patients.` });
+  }
+
+  // Render alerts
+  document.getElementById('clinicalAlerts').innerHTML = alerts.length
+    ? alerts.map(a => `<div class="insight-card ${a.type}">${a.text}</div>`).join('')
+    : '<div class="no-data">No clinical alerts at this time</div>';
+
+  // Render recommendations
+  document.getElementById('operationalRecs').innerHTML = recs.length
+    ? recs.map(r => `<div class="insight-card ${r.type}">${r.text}</div>`).join('')
+    : '<div class="no-data">No recommendations at this time</div>';
+}
+
+// ============================================================
+//  INIT
+// ============================================================
+fetchData();
+</script>
+</body>
+</html>

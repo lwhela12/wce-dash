@@ -772,11 +772,13 @@
     </div>
   </div>
   <div class="header-right">
-    <div class="data-badge">
-      <span class="dot"></span>
-      AdvancedMD FHIR Connected
+    <div class="data-badge" id="dataBadge">
+      <span class="dot" id="statusDot"></span>
+      <span id="statusText">Loading...</span>
     </div>
-    <div class="date-range">📅 Jan 1 – Mar 20, 2026</div>
+    <button onclick="refreshDashboard()" style="padding:6px 14px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--surface-2); font-family:var(--font); font-size:12px; cursor:pointer; font-weight:500; color:var(--text-2);">Refresh Data</button>
+    <a href="/auth/launch" id="connectBtn" style="padding:6px 14px; border:1px solid var(--accent); border-radius:var(--radius-sm); background:var(--accent); font-family:var(--font); font-size:12px; cursor:pointer; font-weight:500; color:#fff; text-decoration:none;">Connect to AdvancedMD</a>
+    <div class="date-range" id="dateRange">📅 Loading...</div>
   </div>
 </header>
 
@@ -1573,10 +1575,144 @@
 
 <script>
 // ========================================
-// FAKE DATA
+// DATA-DRIVEN DASHBOARD
+// Fetches from /api/dashboard-data once on load
+// All tabs render from the same payload
 // ========================================
 
-const PROVIDERS = [
+// Global state
+let DASHBOARD_DATA = null;
+
+async function refreshDashboard() {
+  const statusText = document.getElementById('statusText');
+  const statusDot = document.getElementById('statusDot');
+  const dateRange = document.getElementById('dateRange');
+  const connectBtn = document.getElementById('connectBtn');
+
+  statusText.textContent = 'Loading data...';
+  statusDot.style.background = '#d4a732';
+
+  // Check auth status first
+  try {
+    const authRes = await fetch('/api/auth/status');
+    const authStatus = await authRes.json();
+
+    if (authStatus.connected) {
+      connectBtn.textContent = 'Connected ✓';
+      connectBtn.style.background = '#16a34a';
+      connectBtn.style.borderColor = '#16a34a';
+      connectBtn.style.pointerEvents = 'none';
+    } else {
+      const modeLabel = authStatus.mode === 'test' ? 'Connect (Test Mode)' : 'Connect to AdvancedMD';
+      connectBtn.textContent = modeLabel;
+      connectBtn.style.background = 'var(--accent)';
+      connectBtn.style.borderColor = 'var(--accent)';
+      connectBtn.style.pointerEvents = 'auto';
+    }
+  } catch (e) { /* ignore auth check errors */ }
+
+  try {
+    const url = DASHBOARD_DATA ? '/api/dashboard-data?refresh=true' : '/api/dashboard-data';
+    const res = await fetch(url);
+    const result = await res.json();
+
+    if (result.data && result.data.providers && result.data.providers.length > 0) {
+      DASHBOARD_DATA = result.data;
+
+      const sourceLabel = result.dataSource === 'live' ? 'AdvancedMD FHIR Live' :
+                          result.dataSource === 'synthetic' ? 'Synthetic Demo Data' :
+                          'Cached Metrics';
+      statusText.textContent = sourceLabel;
+      statusDot.style.background = result.dataSource === 'live' ? '#16a34a' : '#d4a732';
+
+      const now = new Date();
+      const sixMonthsAgo = new Date(now - 180 * 24 * 60 * 60 * 1000);
+      dateRange.textContent = '📅 ' + sixMonthsAgo.toLocaleDateString('en-US', {month:'short', day:'numeric'}) + ' – ' + now.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+
+      renderDashboard(DASHBOARD_DATA);
+      console.log('Dashboard rendered from', result.dataSource, result.fetchedIn ? `(${result.fetchedIn})` : '');
+    } else {
+      statusText.textContent = 'Simulated Data';
+      statusDot.style.background = '#94a3b8';
+      dateRange.textContent = '📅 Oct 1, 2025 – Mar 24, 2026';
+      renderDashboard(null);
+    }
+  } catch (err) {
+    console.error('Dashboard load error:', err);
+    statusText.textContent = 'Error — using fallback';
+    statusDot.style.background = '#dc2626';
+    renderDashboard(null);
+  }
+
+  // Check URL params for auth callback status
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('auth') === 'success') {
+    window.history.replaceState({}, '', '/');
+    // Re-fetch with live data now that we're authenticated
+    setTimeout(() => refreshDashboard(), 500);
+  } else if (urlParams.get('auth') === 'error') {
+    alert('Authentication failed: ' + (urlParams.get('message') || 'Unknown error'));
+    window.history.replaceState({}, '', '/');
+  }
+}
+
+// ========================================
+// RENDER EVERYTHING FROM DATA
+// ========================================
+
+function renderDashboard(apiData) {
+  // Use API data providers if available, otherwise fallback
+  // Set globals that rendering code references
+  window._PROVIDERS = (apiData && apiData.providers && apiData.providers.length > 0) ? apiData.providers : FALLBACK_PROVIDERS;
+  window._DIAGNOSES = (apiData && apiData.diagnoses && apiData.diagnoses.length > 0) ? apiData.diagnoses : FALLBACK_DIAGNOSES;
+  window._INSURANCE = (apiData && apiData.insurance && apiData.insurance.length > 0) ? apiData.insurance.map((ins) => ({
+    ...ins, healed: ins.healed || Math.round(ins.activePatients * 0.3), palliative: ins.palliative || Math.round(ins.activePatients * 0.1),
+    erReferrals: ins.erReferrals || Math.round(ins.activePatients * 0.08), snfDischargeFU: ins.snfDischargeFU || Math.round(ins.activePatients * 0.05),
+    acuteCareFU: ins.acuteCareFU || Math.round(ins.activePatients * 0.06), avgCost: ins.avgCost || 4000
+  })) : FALLBACK_INSURANCE;
+
+  // Assign provider colors if missing
+  const providerColors = ['#2d4a7a', '#d4a732', '#4a7ab5', '#16a34a', '#dc2626', '#6b8db5', '#7c3aed', '#f59e0b'];
+  window._PROVIDERS.forEach((p, i) => { if (!p.color) p.color = providerColors[i % providerColors.length]; });
+
+  // Ensure all expected fields have defaults
+  window._PROVIDERS.forEach(p => {
+    p.initials = p.initials || (p.name || '').split(' ').map(w => w[0]).filter(Boolean).slice(0,2).join('');
+    p.role = p.role || p.specialty || '';
+    p.emCodes = p.emCodes || {99211:0,99212:0,99213:0,99214:0,99215:0,99232:0,99233:0};
+    p.debridementCPT = p.debridementCPT || {'97597':0,'97598':0,'97602':0,'11042':0,'11043':0,'11044':0};
+    p.surgicalCPT = p.surgicalCPT || {'11042':0,'11043':0,'11044':0,'15271':0,'15275':0,'28001':0};
+    p.compressionCodes = p.compressionCodes || {A6530:0,A6531:0,A6532:0,A6545:0};
+    // Numeric defaults
+    ['activeWounds','healingRate','avgDays','visitCompliance','woundsTreated','healed',
+     'debrideRate','compressionVLU','weeklyVisit','ptsOver16w','palliativePts',
+     'abiOrders','abiOrders30d','venousUS','venousUS30d','arterialUS','arterialUS30d',
+     'labOrders','labOrders30d','cultureOrders','cultureOrders30d',
+     'endoRef','vascRef','podRef','dmeOrders','rxWritten','radiologyOrders',
+     'hospiceRef','erSends','newPatients','followupPatients','mistOrders','z5189Count',
+     'weeklyVolume','monthlyVolume'].forEach(k => { if (p[k] === undefined) p[k] = 0; });
+  });
+
+  // Clear all dynamic containers before re-rendering
+  ['providerTableBody','providerDeepBody','ordersReferralsBody','insuranceBreakdownBody',
+   'chronicConditionsList','noshowDetailsBody','dxList','patientList',
+   'billingComparisonBody','fullOrdersBody'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '';
+  });
+
+  // Destroy existing charts
+  Object.values(Chart.instances).forEach(c => c.destroy());
+
+  // Run all rendering code
+  doRender();
+}
+
+// ========================================
+// FALLBACK DATA (used when API unavailable)
+// ========================================
+
+const FALLBACK_PROVIDERS = [
   { name: "Dr. Naz Wahab", initials: "NW", role: "Wound Care / Medical Director", color: "#2d4a7a", specialty: "Wound Care",
     activeWounds: 62, healingRate: 78, avgDays: 48, visitCompliance: 96, woundsTreated: 189, healed: 147,
     debrideRate: 92, compressionVLU: 94, weeklyVisit: 96, ptsOver16w: 8, palliativePts: 3,
@@ -1651,7 +1787,7 @@ const PROVIDERS = [
     emCodes: {99211: 2, 99212: 4, 99213: 13, 99214: 16, 99215: 5, 99232: 4, 99233: 1} }
 ];
 
-const DIAGNOSES = [
+const FALLBACK_DIAGNOSES = [
   { name: "Diabetic Foot Ulcer", code: "E11.621", count: 94, color: "#2d4a7a" },
   { name: "Venous Leg Ulcer", code: "I87.2", count: 68, color: "#d4a732" },
   { name: "Pressure Injury", code: "L89.x", count: 52, color: "#4a7ab5" },
@@ -1661,7 +1797,7 @@ const DIAGNOSES = [
   { name: "Burns", code: "T30.0", count: 14, color: "#dc2626" }
 ];
 
-const PATIENTS = [
+const FALLBACK_PATIENTS = [
   { id: 1, name: "Robert Martinez", dx: "Venous Leg Ulcer — L. Ankle", provider: "Dr. Naz Wahab", wounds: [
     { type: "Venous Leg Ulcer", location: "Left medial ankle", status: "worsening", areaCm: 12.4, depthMm: 4, durationWeeks: 18, treatments: [
       { date: "Mar 15", event: "Wound measured at 12.4 cm². <strong>Increased 18%</strong> from prior visit.", color: "#dc2626" },
@@ -1731,7 +1867,7 @@ const PATIENTS = [
   ]}
 ];
 
-const INSURANCE_CARRIERS = [
+const FALLBACK_INSURANCE = [
   { name: "Medicare", color: "#2d4a7a", activePatients: 78, healed: 24, palliative: 12, erReferrals: 8, snfDischargeFU: 6, acuteCareFU: 10, avgCost: 4200 },
   { name: "Medicaid", color: "#d4a732", activePatients: 42, healed: 14, palliative: 8, erReferrals: 6, snfDischargeFU: 4, acuteCareFU: 5, avgCost: 3600 },
   { name: "Blue Cross Blue Shield", color: "#4a7ab5", activePatients: 35, healed: 12, palliative: 5, erReferrals: 4, snfDischargeFU: 3, acuteCareFU: 4, avgCost: 4500 },
@@ -1741,7 +1877,7 @@ const INSURANCE_CARRIERS = [
   { name: "Self-Pay", color: "#dc2626", activePatients: 24, healed: 8, palliative: 3, erReferrals: 3, snfDischargeFU: 2, acuteCareFU: 2, avgCost: 3500 }
 ];
 
-const CHRONIC_CONDITIONS = [
+const FALLBACK_CHRONIC_CONDITIONS = [
   { name: "Type 2 Diabetes Mellitus", count: 156, color: "#2d4a7a" },
   { name: "Chronic Venous Insufficiency", count: 94, color: "#d4a732" },
   { name: "Hypertension", count: 128, color: "#4a7ab5" },
@@ -1754,7 +1890,7 @@ const CHRONIC_CONDITIONS = [
   { name: "Atrial Fibrillation", count: 32, color: "#ef4444" }
 ];
 
-const ETIOLOGY_BY_INSURANCE = {
+const FALLBACK_ETIOLOGY = {
   Medicare: {DFU: 34, VLU: 28, Pressure: 18, Arterial: 12, Surgical: 8, Other: 6},
   Medicaid: {DFU: 18, VLU: 12, Pressure: 8, Arterial: 4, Surgical: 2, Other: 2},
   BCBS: {DFU: 14, VLU: 12, Pressure: 6, Arterial: 4, Surgical: 2, Other: 1},
@@ -1764,14 +1900,14 @@ const ETIOLOGY_BY_INSURANCE = {
   SelfPay: {DFU: 10, VLU: 8, Pressure: 3, Arterial: 2, Surgical: 1, Other: 2}
 };
 
-const NOSHOWS = [
+const FALLBACK_NOSHOWS = [
   { facility: "W Sahara Ave (89146)", appointments: 156, noshows: 12, percent: 7.7, trend: "up", reason: "Lack of transportation" },
   { facility: "S Fort Apache (89148)", appointments: 124, noshows: 14, percent: 11.3, trend: "up", reason: "Work conflicts" },
   { facility: "S Eastern Ave (89123)", appointments: 98, noshows: 6, percent: 6.1, trend: "down", reason: "Childcare issues" },
   { facility: "Pahrump (89048)", appointments: 112, noshows: 8, percent: 7.1, trend: "stable", reason: "Unknown" }
 ];
 
-const REFERRAL_SOURCES = [
+const FALLBACK_REFERRAL_SOURCES = [
   { source: "Patient Portal Booking", count: 92, percent: 27 },
   { source: "Primary Care Referral", count: 68, percent: 20 },
   { source: "Insurance Pre-auth", count: 52, percent: 15 },
@@ -1782,7 +1918,7 @@ const REFERRAL_SOURCES = [
 ];
 
 // ========================================
-// TAB SWITCHING
+// TAB SWITCHING (runs once, not per render)
 // ========================================
 
 document.querySelectorAll('.tab').forEach(tab => {
@@ -1795,8 +1931,18 @@ document.querySelectorAll('.tab').forEach(tab => {
 });
 
 // ========================================
-// RENDER PROVIDER TABLE (OVERVIEW)
+// HELPER FUNCTIONS
 // ========================================
+
+function doRender() {
+  const PROVIDERS = window._PROVIDERS;
+  const DIAGNOSES = window._DIAGNOSES;
+  const INSURANCE_CARRIERS = window._INSURANCE;
+  const PATIENTS = FALLBACK_PATIENTS;
+  const CHRONIC_CONDITIONS = FALLBACK_CHRONIC_CONDITIONS;
+  const ETIOLOGY_BY_INSURANCE = FALLBACK_ETIOLOGY;
+  const NOSHOWS = FALLBACK_NOSHOWS;
+  const REFERRAL_SOURCES = FALLBACK_REFERRAL_SOURCES;
 
 function ratingClass(rate) {
   if (rate >= 75) return 'excellent';
@@ -1979,8 +2125,8 @@ PATIENTS.forEach(p => {
   `;
 });
 
-function selectPatient(id) {
-  const p = PATIENTS.find(pt => pt.id === id);
+window.selectPatient = function(id) {
+  const p = FALLBACK_PATIENTS.find(pt => pt.id === id);
   if (!p) return;
 
   document.querySelectorAll('.patient-list-item').forEach(el => el.classList.remove('selected'));
@@ -2281,11 +2427,12 @@ new Chart(document.getElementById('etiologyChart'), {
   data: {
     labels: ['DFU', 'VLU', 'Pressure', 'Arterial', 'Surgical', 'Other'],
     datasets: INSURANCE_CARRIERS.slice(0, 5).map(i => {
-      const data = ETIOLOGY_BY_INSURANCE[i.name === 'Blue Cross Blue Shield' ? 'BCBS' : i.name === 'United Healthcare' ? 'UnitedHealthcare' : i.name === 'Self-Pay' ? 'SelfPay' : i.name];
+      const key = i.name === 'Blue Cross Blue Shield' ? 'BCBS' : i.name === 'United Healthcare' ? 'UnitedHealthcare' : i.name === 'Self-Pay' ? 'SelfPay' : i.name;
+      const data = ETIOLOGY_BY_INSURANCE[key] || {DFU:0, VLU:0, Pressure:0, Arterial:0, Surgical:0, Other:0};
       return {
         label: i.name,
         data: [data.DFU, data.VLU, data.Pressure, data.Arterial, data.Surgical, data.Other],
-        backgroundColor: i.color,
+        backgroundColor: i.color || '#94a3b8',
         borderRadius: 3
       };
     })
@@ -2969,6 +3116,13 @@ PROVIDERS.forEach(p => {
     </tr>
   `;
 });
+
+} // end doRender()
+
+// ========================================
+// BOOT — fetch data and render on page load
+// ========================================
+refreshDashboard();
 
 </script>
 </body>

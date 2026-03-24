@@ -1,0 +1,12 @@
+{
+  "keys": [
+    {
+      "kty": "RSA",
+      "kid": "wce-dashboard-bulk-1",
+      "n": "uWOA7pMyRb3o586dBXCjdAtE0gS5JlC0SRhUZ0r8eV_9VkwKPbtg5EwQe5oQQ7HHGRaxWL9XfytjZgtzhcVxPt44Ns7mFPOuVp6AgeG7O0KCYq0VadqdkJ9k0iQUE82fCguiJOkR6BkrOHhk3ZhlMpmHjaIZSBzS3nZI7TgfxM3TnC7DsO78x05KWT7Pgo9_2qEbTbahvtQtiEicJJIrQMT4KZGmb2b7W580cFh7UY8t28HGE0ROmqhuIMmKhiw2LYv577sZMh-rleGesDHKcVwJx1fFPT2GMy8apMrcUfArn3UaX8dBoBnEPfW5Og2A7xe5PRXxhAg2TMftdTNn1w",
+      "e": "AQAB",
+      "alg": "RS384",
+      "use": "sig"
+    }
+  ]
+}
