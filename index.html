@@ -787,7 +787,10 @@
   <div class="tabs">
     <button class="tab active" data-tab="overview">Practice Overview</button>
     <button class="tab" data-tab="providers">Provider Performance</button>
+    <button class="tab" data-tab="billing">Billing Patterns</button>
     <button class="tab" data-tab="patients">Patient Explorer</button>
+    <button class="tab" data-tab="populations">Patient Populations</button>
+    <button class="tab" data-tab="management">Practice Management</button>
     <button class="tab" data-tab="insights">AI Insights</button>
   </div>
 
@@ -952,6 +955,349 @@
         </table>
       </div>
     </div>
+
+    <div class="grid-2" style="margin-top: 16px;">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">E/M Code Distribution by Provider</div>
+          <span class="card-tag connect">Connect API</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="emCodesChart"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Patient Volume (New vs Follow-up)</div>
+          <span class="card-tag connect">Connect API</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="patientVolumeChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 16px;">
+      <div class="card-header">
+        <div class="card-title">Orders & Referrals Summary by Provider</div>
+        <span class="card-tag fhir">FHIR ServiceRequest</span>
+      </div>
+      <div class="scroll-y">
+        <table class="provider-table" id="ordersReferralsTable">
+          <thead>
+            <tr>
+              <th>Provider</th>
+              <th>Patients >16wks</th>
+              <th>Palliative Pts</th>
+              <th>ABI (30d)</th>
+              <th>US Orders (30d)</th>
+              <th>Labs/Cultures (30d)</th>
+              <th>Endo Ref</th>
+              <th>Vascular Ref</th>
+              <th>Podiatry Ref</th>
+              <th>DME / Rx</th>
+              <th>Hospice Ref</th>
+            </tr>
+          </thead>
+          <tbody id="ordersReferralsBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== -->
+  <!-- TAB: BILLING PATTERNS -->
+  <!-- ===================== -->
+  <div class="tab-content" id="tab-billing">
+    <div class="section-header">Billing Patterns by Provider <span class="line"></span></div>
+
+    <!-- Billing KPIs -->
+    <div class="kpi-row" style="grid-template-columns: repeat(5,1fr); margin-bottom: 24px;">
+      <div class="kpi-card teal">
+        <div class="kpi-label">Total Debridements</div>
+        <div class="kpi-value" id="kpi-totalDebridements">—</div>
+        <div class="kpi-delta">All CPT debridement codes</div>
+      </div>
+      <div class="kpi-card orange">
+        <div class="kpi-label">Total E/M Visits</div>
+        <div class="kpi-value" id="kpi-totalEM">—</div>
+        <div class="kpi-delta">99211–99215, 99232–99233</div>
+      </div>
+      <div class="kpi-card green">
+        <div class="kpi-label">Closure Code Z51.89</div>
+        <div class="kpi-value" id="kpi-totalZ5189">—</div>
+        <div class="kpi-delta">Page's new closure code</div>
+      </div>
+      <div class="kpi-card purple">
+        <div class="kpi-label">Compression Orders</div>
+        <div class="kpi-value" id="kpi-totalCompression">—</div>
+        <div class="kpi-delta">A6530–A6549 codes</div>
+      </div>
+      <div class="kpi-card red">
+        <div class="kpi-label">MIST / Ultrasonic</div>
+        <div class="kpi-value" id="kpi-totalMIST">—</div>
+        <div class="kpi-delta">Ultrasonic debridements</div>
+      </div>
+    </div>
+
+    <!-- Debridement CPT Codes -->
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Debridement CPT Codes by Provider</div>
+          <span class="card-tag connect">Connect API</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="debridementCPTChart"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Surgical Procedure Codes by Provider</div>
+          <span class="card-tag connect">Connect API</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="surgicalCPTChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- E/M Codes + Compression -->
+    <div class="grid-2" style="margin-top: 16px;">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">E/M Code Distribution by Provider</div>
+          <span class="card-tag connect">Connect API</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="emCodesBillingChart"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Compression Codes Ordered by Provider</div>
+          <span class="card-tag fhir">FHIR ServiceRequest</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="compressionCodesChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Closure Code + MIST -->
+    <div class="grid-2" style="margin-top: 16px;">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Closure Code Z51.89 by Provider</div>
+          <span class="card-tag fhir">FHIR Condition</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="closureCodeChart"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">MIST / Ultrasonic Debridement Orders</div>
+          <span class="card-tag fhir">FHIR Procedure</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="mistChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Full Billing Comparison Table -->
+    <div class="card" style="margin-top: 16px;">
+      <div class="card-header">
+        <div class="card-title">Comprehensive Billing Comparison — All Providers</div>
+        <span class="card-tag connect">Connect API</span>
+      </div>
+      <div class="scroll-y" style="max-height: 500px;">
+        <table class="provider-table" id="billingComparisonTable">
+          <thead>
+            <tr>
+              <th>Provider</th>
+              <th>Debridements</th>
+              <th>Surgical</th>
+              <th>E/M Visits</th>
+              <th>Compression</th>
+              <th>Z51.89</th>
+              <th>MIST</th>
+              <th>Rx Written</th>
+              <th>DME Orders</th>
+              <th>Radiology</th>
+            </tr>
+          </thead>
+          <tbody id="billingComparisonBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Provider Heal Rates + Days to Heal -->
+    <div class="section-header" style="margin-top: 24px;">Provider Heal Rates & Outcomes <span class="line"></span></div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Heal Rate by Provider</div>
+          <span class="card-tag fhir">FHIR Observation</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="healRateCompareChart"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Avg Days to Heal by Provider</div>
+          <span class="card-tag fhir">FHIR Observation</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="daysToHealChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Patient Volume -->
+    <div class="section-header" style="margin-top: 24px;">Patient Volume & Caseload <span class="line"></span></div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Patient Volume per Provider — Weekly Avg</div>
+          <span class="card-tag connect">Connect API</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="weeklyVolumeChart"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Patient Volume per Provider — Monthly</div>
+          <span class="card-tag connect">Connect API</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="monthlyVolumeChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-top: 16px;">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">New vs Follow-up Patients by Provider</div>
+          <span class="card-tag connect">Connect API</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="newVsFollowupChart"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Patients in Treatment >16 Weeks</div>
+          <span class="card-tag fhir">FHIR Encounter</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="over16weeksChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Orders & Referrals Detailed -->
+    <div class="section-header" style="margin-top: 24px;">Orders, Referrals & Diagnostics <span class="line"></span></div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">ABI Orders — Total vs Within 30 Days of First Visit</div>
+          <span class="card-tag fhir">FHIR ServiceRequest</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="abiOrdersChart"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Venous Ultrasound Orders — Total vs Within 30 Days</div>
+          <span class="card-tag fhir">FHIR ServiceRequest</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="venousUSChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-top: 16px;">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Arterial Ultrasound Orders — Total vs Within 30 Days</div>
+          <span class="card-tag fhir">FHIR ServiceRequest</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="arterialUSChart"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Labs & Cultures — Total vs Within 30 Days of Admission</div>
+          <span class="card-tag fhir">FHIR ServiceRequest</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="labsCulturesChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Referrals -->
+    <div class="grid-2" style="margin-top: 16px;">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Specialty Referrals by Provider</div>
+          <span class="card-tag fhir">FHIR ServiceRequest</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="referralsChart"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">ER Sends, Hospice Referrals & Palliative Patients</div>
+          <span class="card-tag fhir">FHIR Encounter</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="erHospiceChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Full Orders & Referrals Table -->
+    <div class="card" style="margin-top: 16px;">
+      <div class="card-header">
+        <div class="card-title">Complete Orders & Referrals — All Providers</div>
+        <span class="card-tag fhir">FHIR ServiceRequest</span>
+      </div>
+      <div class="scroll-y" style="max-height: 500px;">
+        <table class="provider-table" id="fullOrdersTable">
+          <thead>
+            <tr>
+              <th>Provider</th>
+              <th>Palliative</th>
+              <th>MIST</th>
+              <th>ABI (Total/30d)</th>
+              <th>Venous US (Total/30d)</th>
+              <th>Arterial US (Total/30d)</th>
+              <th>Labs (Total/30d)</th>
+              <th>Cultures (Total/30d)</th>
+              <th>Endo Ref</th>
+              <th>Vasc Ref</th>
+              <th>Pod Ref</th>
+              <th>ER Sends</th>
+              <th>Hospice</th>
+            </tr>
+          </thead>
+          <tbody id="fullOrdersBody"></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <!-- ===================== -->
@@ -979,6 +1325,177 @@
           <div class="card-title">Patient List</div>
         </div>
         <div class="scroll-y" id="patientList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== -->
+  <!-- TAB: POPULATIONS      -->
+  <!-- ===================== -->
+  <div class="tab-content" id="tab-populations">
+    <div class="section-header">Patient Populations <span class="line"></span></div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Active Patients by Insurance Carrier</div>
+          <span class="card-tag fhir">FHIR Coverage</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="insuranceChart"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Patients by Status & Insurance</div>
+          <span class="card-tag fhir">FHIR Patient</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="insuranceStatusChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 16px;">
+      <div class="card-header">
+        <div class="card-title">Insurance Carrier Breakdown — Key Metrics</div>
+        <span class="card-tag fhir">FHIR Coverage</span>
+      </div>
+      <div class="scroll-y">
+        <table class="provider-table" id="insuranceBreakdownTable">
+          <thead>
+            <tr>
+              <th>Insurance Carrier</th>
+              <th>Active Patients</th>
+              <th>Healed (90d)</th>
+              <th>Palliative</th>
+              <th>ER Referrals</th>
+              <th>SNF Discharge FU</th>
+              <th>Acute Care FU</th>
+              <th>Avg Cost / Patient</th>
+            </tr>
+          </thead>
+          <tbody id="insuranceBreakdownBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-top: 16px;">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Wound Etiology by Insurance</div>
+          <span class="card-tag fhir">FHIR Condition</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="etiologyChart"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Chronic Care Conditions — Top 10</div>
+        </div>
+        <div class="dx-list" id="chronicConditionsList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== -->
+  <!-- TAB: MANAGEMENT       -->
+  <!-- ===================== -->
+  <div class="tab-content" id="tab-management">
+    <div class="section-header">Practice Management <span class="line"></span></div>
+
+    <div class="kpi-row" style="grid-template-columns: repeat(4,1fr); margin-bottom: 24px;">
+      <div class="kpi-card teal">
+        <div class="kpi-label">Total Charges</div>
+        <div class="kpi-value">$847K</div>
+        <div class="kpi-delta">This quarter</div>
+      </div>
+      <div class="kpi-card green">
+        <div class="kpi-label">Total Reimbursed</div>
+        <div class="kpi-value">$612K</div>
+        <div class="kpi-delta">72% of charges</div>
+      </div>
+      <div class="kpi-card orange">
+        <div class="kpi-label">No-Shows</div>
+        <div class="kpi-value">28</div>
+        <div class="kpi-delta">8.2% no-show rate</div>
+      </div>
+      <div class="kpi-card red">
+        <div class="kpi-label">Avg Collections Lag</div>
+        <div class="kpi-value">42d</div>
+        <div class="kpi-delta">↑ 8 days vs Q3</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Revenue by Insurance Carrier</div>
+          <span class="card-tag connect">Connect API</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="revenueChart"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Reimbursement Rate by Payor</div>
+        </div>
+        <div class="chart-container">
+          <canvas id="reimbursementChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-top: 16px;">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">No-Shows by Provider</div>
+          <span class="card-tag connect">Connect API</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="noshowProviderChart"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Referral Sources</div>
+        </div>
+        <div class="chart-container">
+          <canvas id="referralSourceChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 16px;">
+      <div class="card-header">
+        <div class="card-title">No-Shows by Facility & ZIP Code</div>
+        <span class="card-tag fhir">FHIR Location</span>
+      </div>
+      <div class="scroll-y">
+        <table class="provider-table" id="noshowDetailsTable">
+          <thead>
+            <tr>
+              <th>Facility / ZIP</th>
+              <th>Total Appointments</th>
+              <th>No-Shows</th>
+              <th>No-Show %</th>
+              <th>Trend</th>
+              <th>Top Reason</th>
+            </tr>
+          </thead>
+          <tbody id="noshowDetailsBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 16px;">
+      <div class="card-header">
+        <div class="card-title">Wound Size Distribution</div>
+      </div>
+      <div class="chart-container">
+        <canvas id="woundSizeChart"></canvas>
       </div>
     </div>
   </div>
@@ -1060,12 +1577,78 @@
 // ========================================
 
 const PROVIDERS = [
-  { name: "Dr. Naz Wahab", initials: "NW", role: "Wound Care / Medical Director", color: "#2d4a7a", specialty: "Wound Care", activeWounds: 62, healingRate: 78, avgDays: 48, visitCompliance: 96, woundsTreated: 189, healed: 147, debrideRate: 92, compressionVLU: 94, weeklyVisit: 96 },
-  { name: "Dr. James Chen", initials: "JC", role: "Surgical Podiatry", color: "#d4a732", specialty: "Podiatry", activeWounds: 54, healingRate: 71, avgDays: 55, visitCompliance: 88, woundsTreated: 156, healed: 111, debrideRate: 88, compressionVLU: 78, weeklyVisit: 88 },
-  { name: "Dr. Sarah Okonkwo", initials: "SO", role: "Endocrinology", color: "#4a7ab5", specialty: "Endocrinology", activeWounds: 38, healingRate: 65, avgDays: 62, visitCompliance: 91, woundsTreated: 98, healed: 64, debrideRate: 76, compressionVLU: 82, weeklyVisit: 91 },
-  { name: "NP Lisa Torres", initials: "LT", role: "Wound Care NP", color: "#16a34a", specialty: "Wound Care", activeWounds: 71, healingRate: 69, avgDays: 56, visitCompliance: 93, woundsTreated: 172, healed: 119, debrideRate: 85, compressionVLU: 88, weeklyVisit: 93 },
-  { name: "Dr. Amir Patel", initials: "AP", role: "Infectious Disease", color: "#dc2626", specialty: "Infectious Disease", activeWounds: 45, healingRate: 62, avgDays: 68, visitCompliance: 85, woundsTreated: 112, healed: 69, debrideRate: 71, compressionVLU: 70, weeklyVisit: 85 },
-  { name: "PA Kevin Moore", initials: "KM", role: "Primary Care PA", color: "#6b8db5", specialty: "Primary Care", activeWounds: 42, healingRate: 58, avgDays: 72, visitCompliance: 82, woundsTreated: 95, healed: 55, debrideRate: 68, compressionVLU: 65, weeklyVisit: 82 }
+  { name: "Dr. Naz Wahab", initials: "NW", role: "Wound Care / Medical Director", color: "#2d4a7a", specialty: "Wound Care",
+    activeWounds: 62, healingRate: 78, avgDays: 48, visitCompliance: 96, woundsTreated: 189, healed: 147,
+    debrideRate: 92, compressionVLU: 94, weeklyVisit: 96, ptsOver16w: 8, palliativePts: 3,
+    abiOrders: 12, abiOrders30d: 10, venousUS: 14, venousUS30d: 11, arterialUS: 8, arterialUS30d: 6,
+    labOrders: 26, labOrders30d: 22, cultureOrders: 14, cultureOrders30d: 12,
+    endoRef: 9, vascRef: 6, podRef: 4, dmeOrders: 18, rxWritten: 24, radiologyOrders: 8,
+    hospiceRef: 1, erSends: 4, newPatients: 28, followupPatients: 34, mistOrders: 9, z5189Count: 18,
+    weeklyVolume: 16, monthlyVolume: 62,
+    compressionCodes: { A6530: 12, A6531: 8, A6532: 6, A6545: 4 },
+    debridementCPT: { "97597": 28, "97598": 18, "97602": 14, "11042": 22, "11043": 8, "11044": 4 },
+    surgicalCPT: { "11042": 22, "11043": 8, "11044": 4, "15271": 6, "15275": 3, "28001": 2 },
+    emCodes: {99211: 4, 99212: 8, 99213: 18, 99214: 32, 99215: 12, 99232: 8, 99233: 4} },
+  { name: "Dr. James Chen", initials: "JC", role: "Surgical Podiatry", color: "#d4a732", specialty: "Podiatry",
+    activeWounds: 54, healingRate: 71, avgDays: 55, visitCompliance: 88, woundsTreated: 156, healed: 111,
+    debrideRate: 88, compressionVLU: 78, weeklyVisit: 88, ptsOver16w: 12, palliativePts: 2,
+    abiOrders: 8, abiOrders30d: 6, venousUS: 10, venousUS30d: 7, arterialUS: 6, arterialUS30d: 4,
+    labOrders: 19, labOrders30d: 15, cultureOrders: 10, cultureOrders30d: 8,
+    endoRef: 4, vascRef: 8, podRef: 14, dmeOrders: 14, rxWritten: 18, radiologyOrders: 12,
+    hospiceRef: 0, erSends: 2, newPatients: 22, followupPatients: 26, mistOrders: 5, z5189Count: 12,
+    weeklyVolume: 12, monthlyVolume: 48,
+    compressionCodes: { A6530: 8, A6531: 5, A6532: 4, A6545: 2 },
+    debridementCPT: { "97597": 22, "97598": 14, "97602": 10, "11042": 18, "11043": 12, "11044": 6 },
+    surgicalCPT: { "11042": 18, "11043": 12, "11044": 6, "15271": 8, "15275": 5, "28001": 6 },
+    emCodes: {99211: 3, 99212: 6, 99213: 14, 99214: 24, 99215: 8, 99232: 6, 99233: 2} },
+  { name: "Dr. Sarah Okonkwo", initials: "SO", role: "Endocrinology", color: "#4a7ab5", specialty: "Endocrinology",
+    activeWounds: 38, healingRate: 65, avgDays: 62, visitCompliance: 91, woundsTreated: 98, healed: 64,
+    debrideRate: 76, compressionVLU: 82, weeklyVisit: 91, ptsOver16w: 6, palliativePts: 4,
+    abiOrders: 6, abiOrders30d: 5, venousUS: 7, venousUS30d: 5, arterialUS: 4, arterialUS30d: 3,
+    labOrders: 28, labOrders30d: 24, cultureOrders: 8, cultureOrders30d: 6,
+    endoRef: 18, vascRef: 3, podRef: 2, dmeOrders: 10, rxWritten: 22, radiologyOrders: 6,
+    hospiceRef: 2, erSends: 3, newPatients: 16, followupPatients: 18, mistOrders: 3, z5189Count: 8,
+    weeklyVolume: 9, monthlyVolume: 34,
+    compressionCodes: { A6530: 6, A6531: 4, A6532: 3, A6545: 2 },
+    debridementCPT: { "97597": 14, "97598": 8, "97602": 12, "11042": 10, "11043": 4, "11044": 2 },
+    surgicalCPT: { "11042": 10, "11043": 4, "11044": 2, "15271": 2, "15275": 1, "28001": 0 },
+    emCodes: {99211: 2, 99212: 6, 99213: 12, 99214: 18, 99215: 6, 99232: 4, 99233: 2} },
+  { name: "NP Lisa Torres", initials: "LT", role: "Wound Care NP", color: "#16a34a", specialty: "Wound Care",
+    activeWounds: 71, healingRate: 69, avgDays: 56, visitCompliance: 93, woundsTreated: 172, healed: 119,
+    debrideRate: 85, compressionVLU: 88, weeklyVisit: 93, ptsOver16w: 10, palliativePts: 5,
+    abiOrders: 14, abiOrders30d: 11, venousUS: 16, venousUS30d: 12, arterialUS: 10, arterialUS30d: 7,
+    labOrders: 31, labOrders30d: 26, cultureOrders: 16, cultureOrders30d: 13,
+    endoRef: 7, vascRef: 7, podRef: 6, dmeOrders: 20, rxWritten: 28, radiologyOrders: 10,
+    hospiceRef: 1, erSends: 5, newPatients: 30, followupPatients: 38, mistOrders: 11, z5189Count: 14,
+    weeklyVolume: 17, monthlyVolume: 68,
+    compressionCodes: { A6530: 14, A6531: 10, A6532: 8, A6545: 5 },
+    debridementCPT: { "97597": 26, "97598": 16, "97602": 18, "11042": 20, "11043": 6, "11044": 2 },
+    surgicalCPT: { "11042": 20, "11043": 6, "11044": 2, "15271": 4, "15275": 2, "28001": 1 },
+    emCodes: {99211: 5, 99212: 10, 99213: 20, 99214: 28, 99215: 10, 99232: 7, 99233: 3} },
+  { name: "Dr. Amir Patel", initials: "AP", role: "Infectious Disease", color: "#dc2626", specialty: "Infectious Disease",
+    activeWounds: 45, healingRate: 62, avgDays: 68, visitCompliance: 85, woundsTreated: 112, healed: 69,
+    debrideRate: 71, compressionVLU: 70, weeklyVisit: 85, ptsOver16w: 14, palliativePts: 6,
+    abiOrders: 10, abiOrders30d: 7, venousUS: 8, venousUS30d: 5, arterialUS: 6, arterialUS30d: 4,
+    labOrders: 34, labOrders30d: 28, cultureOrders: 22, cultureOrders30d: 18,
+    endoRef: 5, vascRef: 5, podRef: 3, dmeOrders: 12, rxWritten: 32, radiologyOrders: 14,
+    hospiceRef: 2, erSends: 6, newPatients: 19, followupPatients: 22, mistOrders: 4, z5189Count: 6,
+    weeklyVolume: 10, monthlyVolume: 41,
+    compressionCodes: { A6530: 6, A6531: 3, A6532: 3, A6545: 1 },
+    debridementCPT: { "97597": 16, "97598": 10, "97602": 8, "11042": 12, "11043": 6, "11044": 3 },
+    surgicalCPT: { "11042": 12, "11043": 6, "11044": 3, "15271": 3, "15275": 2, "28001": 1 },
+    emCodes: {99211: 2, 99212: 5, 99213: 15, 99214: 20, 99215: 7, 99232: 5, 99233: 2} },
+  { name: "PA Kevin Moore", initials: "KM", role: "Primary Care PA", color: "#6b8db5", specialty: "Primary Care",
+    activeWounds: 42, healingRate: 58, avgDays: 72, visitCompliance: 82, woundsTreated: 95, healed: 55,
+    debrideRate: 68, compressionVLU: 65, weeklyVisit: 82, ptsOver16w: 9, palliativePts: 3,
+    abiOrders: 7, abiOrders30d: 4, venousUS: 6, venousUS30d: 3, arterialUS: 4, arterialUS30d: 2,
+    labOrders: 22, labOrders30d: 16, cultureOrders: 9, cultureOrders30d: 6,
+    endoRef: 6, vascRef: 4, podRef: 3, dmeOrders: 8, rxWritten: 16, radiologyOrders: 6,
+    hospiceRef: 1, erSends: 3, newPatients: 18, followupPatients: 20, mistOrders: 2, z5189Count: 4,
+    weeklyVolume: 10, monthlyVolume: 38,
+    compressionCodes: { A6530: 5, A6531: 3, A6532: 2, A6545: 1 },
+    debridementCPT: { "97597": 12, "97598": 8, "97602": 6, "11042": 8, "11043": 4, "11044": 2 },
+    surgicalCPT: { "11042": 8, "11043": 4, "11044": 2, "15271": 1, "15275": 1, "28001": 0 },
+    emCodes: {99211: 2, 99212: 4, 99213: 13, 99214: 16, 99215: 5, 99232: 4, 99233: 1} }
 ];
 
 const DIAGNOSES = [
@@ -1148,6 +1731,56 @@ const PATIENTS = [
   ]}
 ];
 
+const INSURANCE_CARRIERS = [
+  { name: "Medicare", color: "#2d4a7a", activePatients: 78, healed: 24, palliative: 12, erReferrals: 8, snfDischargeFU: 6, acuteCareFU: 10, avgCost: 4200 },
+  { name: "Medicaid", color: "#d4a732", activePatients: 42, healed: 14, palliative: 8, erReferrals: 6, snfDischargeFU: 4, acuteCareFU: 5, avgCost: 3600 },
+  { name: "Blue Cross Blue Shield", color: "#4a7ab5", activePatients: 35, healed: 12, palliative: 5, erReferrals: 4, snfDischargeFU: 3, acuteCareFU: 4, avgCost: 4500 },
+  { name: "United Healthcare", color: "#8b5e3c", activePatients: 28, healed: 10, palliative: 4, erReferrals: 3, snfDischargeFU: 2, acuteCareFU: 3, avgCost: 4100 },
+  { name: "Aetna", color: "#16a34a", activePatients: 22, healed: 8, palliative: 3, erReferrals: 2, snfDischargeFU: 2, acuteCareFU: 2, avgCost: 4300 },
+  { name: "Cigna", color: "#6b8db5", activePatients: 18, healed: 6, palliative: 2, erReferrals: 2, snfDischargeFU: 1, acuteCareFU: 2, avgCost: 4000 },
+  { name: "Self-Pay", color: "#dc2626", activePatients: 24, healed: 8, palliative: 3, erReferrals: 3, snfDischargeFU: 2, acuteCareFU: 2, avgCost: 3500 }
+];
+
+const CHRONIC_CONDITIONS = [
+  { name: "Type 2 Diabetes Mellitus", count: 156, color: "#2d4a7a" },
+  { name: "Chronic Venous Insufficiency", count: 94, color: "#d4a732" },
+  { name: "Hypertension", count: 128, color: "#4a7ab5" },
+  { name: "Peripheral Arterial Disease", count: 58, color: "#8b5e3c" },
+  { name: "Obesity", count: 112, color: "#16a34a" },
+  { name: "COPD", count: 42, color: "#6b8db5" },
+  { name: "Chronic Kidney Disease", count: 68, color: "#dc2626" },
+  { name: "Depression / Anxiety", count: 64, color: "#7c3aed" },
+  { name: "Congestive Heart Failure", count: 38, color: "#f59e0b" },
+  { name: "Atrial Fibrillation", count: 32, color: "#ef4444" }
+];
+
+const ETIOLOGY_BY_INSURANCE = {
+  Medicare: {DFU: 34, VLU: 28, Pressure: 18, Arterial: 12, Surgical: 8, Other: 6},
+  Medicaid: {DFU: 18, VLU: 12, Pressure: 8, Arterial: 4, Surgical: 2, Other: 2},
+  BCBS: {DFU: 14, VLU: 12, Pressure: 6, Arterial: 4, Surgical: 2, Other: 1},
+  UnitedHealthcare: {DFU: 12, VLU: 8, Pressure: 4, Arterial: 2, Surgical: 2, Other: 1},
+  Aetna: {DFU: 9, VLU: 6, Pressure: 3, Arterial: 2, Surgical: 1, Other: 1},
+  Cigna: {DFU: 7, VLU: 5, Pressure: 2, Arterial: 1, Surgical: 1, Other: 0},
+  SelfPay: {DFU: 10, VLU: 8, Pressure: 3, Arterial: 2, Surgical: 1, Other: 2}
+};
+
+const NOSHOWS = [
+  { facility: "W Sahara Ave (89146)", appointments: 156, noshows: 12, percent: 7.7, trend: "up", reason: "Lack of transportation" },
+  { facility: "S Fort Apache (89148)", appointments: 124, noshows: 14, percent: 11.3, trend: "up", reason: "Work conflicts" },
+  { facility: "S Eastern Ave (89123)", appointments: 98, noshows: 6, percent: 6.1, trend: "down", reason: "Childcare issues" },
+  { facility: "Pahrump (89048)", appointments: 112, noshows: 8, percent: 7.1, trend: "stable", reason: "Unknown" }
+];
+
+const REFERRAL_SOURCES = [
+  { source: "Patient Portal Booking", count: 92, percent: 27 },
+  { source: "Primary Care Referral", count: 68, percent: 20 },
+  { source: "Insurance Pre-auth", count: 52, percent: 15 },
+  { source: "Hospital Discharge", count: 48, percent: 14 },
+  { source: "Walk-in / Self-referral", count: 36, percent: 11 },
+  { source: "Specialist Referral", count: 24, percent: 8 },
+  { source: "SNF / LTC Referral", count: 14, percent: 4 }
+];
+
 // ========================================
 // TAB SWITCHING
 // ========================================
@@ -1222,6 +1855,87 @@ PROVIDERS.forEach(p => {
       <td>${p.debrideRate}%</td>
       <td>${p.compressionVLU}%</td>
       <td>${p.weeklyVisit}%</td>
+    </tr>
+  `;
+});
+
+// ========================================
+// RENDER ORDERS & REFERRALS TABLE
+// ========================================
+
+const ordersReferralsBody = document.getElementById('ordersReferralsBody');
+PROVIDERS.forEach(p => {
+  ordersReferralsBody.innerHTML += `
+    <tr>
+      <td><div class="provider-name"><div class="provider-avatar" style="background:${p.color}22; color:${p.color}">${p.initials}</div><div class="provider-info"><div class="name">${p.name}</div></div></div></td>
+      <td>${p.ptsOver16w}</td>
+      <td>${p.palliativePts}</td>
+      <td>${p.abiOrders}</td>
+      <td>${p.usOrders}</td>
+      <td>${p.labOrders}</td>
+      <td>${p.endoRef}</td>
+      <td>${p.vascRef}</td>
+      <td>${p.podRef}</td>
+      <td>${p.dmeOrders} / ${p.rxWritten}</td>
+      <td>${p.hospiceRef}</td>
+    </tr>
+  `;
+});
+
+// ========================================
+// RENDER INSURANCE BREAKDOWN TABLE
+// ========================================
+
+const insuranceBreakdownBody = document.getElementById('insuranceBreakdownBody');
+INSURANCE_CARRIERS.forEach(i => {
+  insuranceBreakdownBody.innerHTML += `
+    <tr>
+      <td><strong>${i.name}</strong></td>
+      <td>${i.activePatients}</td>
+      <td>${i.healed}</td>
+      <td>${i.palliative}</td>
+      <td>${i.erReferrals}</td>
+      <td>${i.snfDischargeFU}</td>
+      <td>${i.acuteCareFU}</td>
+      <td>$${i.avgCost}</td>
+    </tr>
+  `;
+});
+
+// ========================================
+// RENDER CHRONIC CONDITIONS LIST
+// ========================================
+
+const chronicList = document.getElementById('chronicConditionsList');
+const maxChronicCount = Math.max(...CHRONIC_CONDITIONS.map(d => d.count));
+CHRONIC_CONDITIONS.forEach(d => {
+  const pct = (d.count / maxChronicCount * 100).toFixed(0);
+  chronicList.innerHTML += `
+    <div class="dx-item">
+      <div class="dx-label">${d.name}</div>
+      <div class="dx-bar-bg">
+        <div class="dx-bar-fill" style="width:${pct}%; background:${d.color}">${d.count}</div>
+      </div>
+    </div>
+  `;
+});
+
+// ========================================
+// RENDER NO-SHOW DETAILS TABLE
+// ========================================
+
+const noshowDetailsBody = document.getElementById('noshowDetailsBody');
+NOSHOWS.forEach(n => {
+  const trendColor = n.trend === 'up' ? 'var(--danger)' : n.trend === 'down' ? 'var(--success)' : 'var(--accent-2)';
+  const trendArrow = n.trend === 'up' ? '↑' : n.trend === 'down' ? '↓' : '→';
+  noshowDetailsBody.innerHTML += `
+    <tr>
+      <td><strong>${n.facility}</strong></td>
+      <td>${n.appointments}</td>
+      <td>${n.noshows}</td>
+      <td><strong style="color:${n.percent > 10 ? 'var(--danger)' : 'var(--accent-2)'}">${n.percent}%</strong></td>
+      <td style="color:${trendColor}">${trendArrow} ${n.trend}</td>
+      <td>${n.reason}</td>
     </tr>
   `;
 });
@@ -1491,6 +2205,771 @@ new Chart(document.getElementById('riskChart'), {
     }
   }
 });
+
+// ========================================
+// CHARTS FOR POPULATIONS TAB
+// ========================================
+
+// Insurance Carriers Chart
+new Chart(document.getElementById('insuranceChart'), {
+  type: 'doughnut',
+  data: {
+    labels: INSURANCE_CARRIERS.map(i => i.name),
+    datasets: [{
+      data: INSURANCE_CARRIERS.map(i => i.activePatients),
+      backgroundColor: INSURANCE_CARRIERS.map(i => i.color),
+      borderWidth: 0,
+      hoverOffset: 8
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '55%',
+    plugins: {
+      legend: { position: 'right', labels: { boxWidth: 10, padding: 12, font: { size: 10 } } }
+    }
+  }
+});
+
+// Insurance Status Chart
+new Chart(document.getElementById('insuranceStatusChart'), {
+  type: 'bar',
+  data: {
+    labels: INSURANCE_CARRIERS.map(i => i.name),
+    datasets: [
+      {
+        label: 'Healed (90d)',
+        data: INSURANCE_CARRIERS.map(i => i.healed),
+        backgroundColor: '#16a34a',
+        borderRadius: 4
+      },
+      {
+        label: 'Palliative',
+        data: INSURANCE_CARRIERS.map(i => i.palliative),
+        backgroundColor: '#d4a732',
+        borderRadius: 4
+      },
+      {
+        label: 'ER Referrals',
+        data: INSURANCE_CARRIERS.map(i => i.erReferrals),
+        backgroundColor: '#dc2626',
+        borderRadius: 4
+      },
+      {
+        label: 'Active Treatment',
+        data: INSURANCE_CARRIERS.map(i => i.activePatients - i.healed - i.palliative - i.erReferrals),
+        backgroundColor: '#2d4a7a',
+        borderRadius: 4
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12, font: { size: 10 } } } },
+    scales: {
+      x: { stacked: true, grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { stacked: true, grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+// Etiology Chart
+new Chart(document.getElementById('etiologyChart'), {
+  type: 'bar',
+  data: {
+    labels: ['DFU', 'VLU', 'Pressure', 'Arterial', 'Surgical', 'Other'],
+    datasets: INSURANCE_CARRIERS.slice(0, 5).map(i => {
+      const data = ETIOLOGY_BY_INSURANCE[i.name === 'Blue Cross Blue Shield' ? 'BCBS' : i.name === 'United Healthcare' ? 'UnitedHealthcare' : i.name === 'Self-Pay' ? 'SelfPay' : i.name];
+      return {
+        label: i.name,
+        data: [data.DFU, data.VLU, data.Pressure, data.Arterial, data.Surgical, data.Other],
+        backgroundColor: i.color,
+        borderRadius: 3
+      };
+    })
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 10, font: { size: 10 } } } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+// ========================================
+// CHARTS FOR MANAGEMENT TAB
+// ========================================
+
+// Revenue by Insurance
+new Chart(document.getElementById('revenueChart'), {
+  type: 'bar',
+  data: {
+    labels: INSURANCE_CARRIERS.map(i => i.name),
+    datasets: [{
+      label: 'Total Revenue',
+      data: INSURANCE_CARRIERS.map(i => i.activePatients * i.avgCost / 1000),
+      backgroundColor: INSURANCE_CARRIERS.map(i => i.color),
+      borderRadius: 4
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    indexAxis: 'y',
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { font: { size: 10 }, callback: v => '$' + v + 'k' } },
+      y: { grid: { display: false }, ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+// Reimbursement Rate
+new Chart(document.getElementById('reimbursementChart'), {
+  type: 'line',
+  data: {
+    labels: INSURANCE_CARRIERS.map(i => i.name),
+    datasets: [{
+      label: 'Reimbursement %',
+      data: [74, 68, 76, 72, 75, 70, 62],
+      borderColor: '#2d4a7a',
+      backgroundColor: 'rgba(45,74,122,0.06)',
+      fill: true,
+      tension: 0.4,
+      pointRadius: 4,
+      pointBackgroundColor: '#2d4a7a',
+      borderWidth: 2
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { min: 50, max: 85, grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { font: { size: 10 }, callback: v => v + '%' } },
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+// No-Shows by Provider
+new Chart(document.getElementById('noshowProviderChart'), {
+  type: 'bar',
+  data: {
+    labels: PROVIDERS.map(p => p.initials),
+    datasets: [{
+      label: 'No-Shows',
+      data: [3, 5, 2, 4, 6, 3],
+      backgroundColor: '#dc2626',
+      borderRadius: 4
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+// Referral Sources
+new Chart(document.getElementById('referralSourceChart'), {
+  type: 'doughnut',
+  data: {
+    labels: REFERRAL_SOURCES.map(r => r.source),
+    datasets: [{
+      data: REFERRAL_SOURCES.map(r => r.count),
+      backgroundColor: ['#2d4a7a', '#d4a732', '#4a7ab5', '#16a34a', '#8b5e3c', '#6b8db5', '#dc2626'],
+      borderWidth: 0,
+      hoverOffset: 8
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '55%',
+    plugins: {
+      legend: { position: 'right', labels: { boxWidth: 10, padding: 10, font: { size: 9 } } }
+    }
+  }
+});
+
+// Wound Size Distribution
+new Chart(document.getElementById('woundSizeChart'), {
+  type: 'bar',
+  data: {
+    labels: ['0-2 cm²', '2-5 cm²', '5-10 cm²', '10-20 cm²', '20+ cm²'],
+    datasets: [
+      {
+        label: 'Large (>10 cm²)',
+        data: [0, 0, 0, 34, 28],
+        backgroundColor: '#dc2626',
+        borderRadius: 4
+      },
+      {
+        label: 'Moderate (5-10 cm²)',
+        data: [0, 0, 62, 0, 0],
+        backgroundColor: '#d4a732',
+        borderRadius: 4
+      },
+      {
+        label: 'Small (<5 cm²)',
+        data: [48, 78, 0, 0, 0],
+        backgroundColor: '#16a34a',
+        borderRadius: 4
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12, font: { size: 10 } } } },
+    scales: {
+      x: { stacked: true, grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { stacked: true, grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+// ========================================
+// CHARTS FOR PROVIDERS TAB ENHANCEMENTS
+// ========================================
+
+// E/M Codes Chart
+new Chart(document.getElementById('emCodesChart'), {
+  type: 'bar',
+  data: {
+    labels: PROVIDERS.map(p => p.initials),
+    datasets: [
+      { label: '99211-12', data: PROVIDERS.map(p => (p.emCodes[99211]||0) + (p.emCodes[99212]||0)), backgroundColor: '#94a3b8', borderRadius: 3 },
+      { label: '99213', data: PROVIDERS.map(p => p.emCodes[99213]), backgroundColor: '#2d4a7a', borderRadius: 3 },
+      { label: '99214', data: PROVIDERS.map(p => p.emCodes[99214]), backgroundColor: '#d4a732', borderRadius: 3 },
+      { label: '99215', data: PROVIDERS.map(p => p.emCodes[99215]), backgroundColor: '#4a7ab5', borderRadius: 3 },
+      { label: '99232/33', data: PROVIDERS.map(p => p.emCodes[99232] + p.emCodes[99233]), backgroundColor: '#16a34a', borderRadius: 3 }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12, font: { size: 10 } } } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+// Patient Volume Chart (Provider Tab)
+new Chart(document.getElementById('patientVolumeChart'), {
+  type: 'bar',
+  data: {
+    labels: PROVIDERS.map(p => p.initials),
+    datasets: [
+      {
+        label: 'New Patients',
+        data: PROVIDERS.map(p => p.newPatients),
+        backgroundColor: '#2d4a7a',
+        borderRadius: 4
+      },
+      {
+        label: 'Follow-up Patients',
+        data: PROVIDERS.map(p => p.followupPatients),
+        backgroundColor: '#d4a732',
+        borderRadius: 4
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12, font: { size: 10 } } } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { font: { size: 10 } } }
+    }
+  }
+});
+// ========================================
+// BILLING PATTERNS TAB — CHARTS & TABLES
+// ========================================
+
+// KPI calculations
+const totalDebridements = PROVIDERS.reduce((s, p) => s + Object.values(p.debridementCPT).reduce((a,b)=>a+b,0), 0);
+const totalEM = PROVIDERS.reduce((s, p) => s + Object.values(p.emCodes).reduce((a,b)=>a+b,0), 0);
+const totalZ5189 = PROVIDERS.reduce((s, p) => s + p.z5189Count, 0);
+const totalCompression = PROVIDERS.reduce((s, p) => s + Object.values(p.compressionCodes).reduce((a,b)=>a+b,0), 0);
+const totalMIST = PROVIDERS.reduce((s, p) => s + p.mistOrders, 0);
+
+document.getElementById('kpi-totalDebridements').textContent = totalDebridements;
+document.getElementById('kpi-totalEM').textContent = totalEM;
+document.getElementById('kpi-totalZ5189').textContent = totalZ5189;
+document.getElementById('kpi-totalCompression').textContent = totalCompression;
+document.getElementById('kpi-totalMIST').textContent = totalMIST;
+
+// Debridement CPT Codes Chart
+new Chart(document.getElementById('debridementCPTChart'), {
+  type: 'bar',
+  data: {
+    labels: PROVIDERS.map(p => p.initials),
+    datasets: [
+      { label: '97597 (Debride ≤20cm²)', data: PROVIDERS.map(p => p.debridementCPT['97597']), backgroundColor: '#2d4a7a', borderRadius: 3 },
+      { label: '97598 (Debride +20cm²)', data: PROVIDERS.map(p => p.debridementCPT['97598']), backgroundColor: '#d4a732', borderRadius: 3 },
+      { label: '97602 (Non-selective)', data: PROVIDERS.map(p => p.debridementCPT['97602']), backgroundColor: '#4a7ab5', borderRadius: 3 },
+      { label: '11042 (Sub-Q)', data: PROVIDERS.map(p => p.debridementCPT['11042']), backgroundColor: '#16a34a', borderRadius: 3 },
+      { label: '11043 (Muscle/fascia)', data: PROVIDERS.map(p => p.debridementCPT['11043']), backgroundColor: '#dc2626', borderRadius: 3 },
+      { label: '11044 (Bone)', data: PROVIDERS.map(p => p.debridementCPT['11044']), backgroundColor: '#6b8db5', borderRadius: 3 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 8, font: { size: 9 } } } },
+    scales: {
+      x: { stacked: true, grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { stacked: true, grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+// Surgical CPT Codes Chart
+new Chart(document.getElementById('surgicalCPTChart'), {
+  type: 'bar',
+  data: {
+    labels: PROVIDERS.map(p => p.initials),
+    datasets: [
+      { label: '11042 (Sub-Q debride)', data: PROVIDERS.map(p => p.surgicalCPT['11042']), backgroundColor: '#2d4a7a', borderRadius: 3 },
+      { label: '11043 (Muscle/fascia)', data: PROVIDERS.map(p => p.surgicalCPT['11043']), backgroundColor: '#d4a732', borderRadius: 3 },
+      { label: '11044 (Bone)', data: PROVIDERS.map(p => p.surgicalCPT['11044']), backgroundColor: '#4a7ab5', borderRadius: 3 },
+      { label: '15271 (Skin sub ≤25cm²)', data: PROVIDERS.map(p => p.surgicalCPT['15271']), backgroundColor: '#16a34a', borderRadius: 3 },
+      { label: '15275 (Skin sub ≤100cm²)', data: PROVIDERS.map(p => p.surgicalCPT['15275']), backgroundColor: '#dc2626', borderRadius: 3 },
+      { label: '28001 (Fasciotomy)', data: PROVIDERS.map(p => p.surgicalCPT['28001']), backgroundColor: '#6b8db5', borderRadius: 3 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 8, font: { size: 9 } } } },
+    scales: {
+      x: { stacked: true, grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { stacked: true, grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+// E/M Codes Chart (Billing tab — full breakdown)
+new Chart(document.getElementById('emCodesBillingChart'), {
+  type: 'bar',
+  data: {
+    labels: PROVIDERS.map(p => p.initials),
+    datasets: [
+      { label: '99211', data: PROVIDERS.map(p => p.emCodes[99211]||0), backgroundColor: '#94a3b8', borderRadius: 3 },
+      { label: '99212', data: PROVIDERS.map(p => p.emCodes[99212]||0), backgroundColor: '#6b8db5', borderRadius: 3 },
+      { label: '99213', data: PROVIDERS.map(p => p.emCodes[99213]), backgroundColor: '#2d4a7a', borderRadius: 3 },
+      { label: '99214', data: PROVIDERS.map(p => p.emCodes[99214]), backgroundColor: '#d4a732', borderRadius: 3 },
+      { label: '99215', data: PROVIDERS.map(p => p.emCodes[99215]), backgroundColor: '#4a7ab5', borderRadius: 3 },
+      { label: '99232', data: PROVIDERS.map(p => p.emCodes[99232]), backgroundColor: '#16a34a', borderRadius: 3 },
+      { label: '99233', data: PROVIDERS.map(p => p.emCodes[99233]), backgroundColor: '#dc2626', borderRadius: 3 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 8, font: { size: 9 } } } },
+    scales: {
+      x: { stacked: true, grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { stacked: true, grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+// Compression Codes Chart
+new Chart(document.getElementById('compressionCodesChart'), {
+  type: 'bar',
+  data: {
+    labels: PROVIDERS.map(p => p.initials),
+    datasets: [
+      { label: 'A6530 (Gradient comp stockings)', data: PROVIDERS.map(p => p.compressionCodes.A6530), backgroundColor: '#2d4a7a', borderRadius: 3 },
+      { label: 'A6531 (Comp stocking thigh)', data: PROVIDERS.map(p => p.compressionCodes.A6531), backgroundColor: '#d4a732', borderRadius: 3 },
+      { label: 'A6532 (Comp stocking waist)', data: PROVIDERS.map(p => p.compressionCodes.A6532), backgroundColor: '#4a7ab5', borderRadius: 3 },
+      { label: 'A6545 (Gradient comp wrap)', data: PROVIDERS.map(p => p.compressionCodes.A6545), backgroundColor: '#16a34a', borderRadius: 3 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 8, font: { size: 9 } } } },
+    scales: {
+      x: { stacked: true, grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { stacked: true, grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+// Closure Code Z51.89 Chart
+new Chart(document.getElementById('closureCodeChart'), {
+  type: 'bar',
+  data: {
+    labels: PROVIDERS.map(p => p.initials),
+    datasets: [{
+      label: 'Z51.89 Closures',
+      data: PROVIDERS.map(p => p.z5189Count),
+      backgroundColor: PROVIDERS.map(p => p.color),
+      borderRadius: 4
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+// MIST / Ultrasonic Debridement Chart
+new Chart(document.getElementById('mistChart'), {
+  type: 'bar',
+  data: {
+    labels: PROVIDERS.map(p => p.initials),
+    datasets: [{
+      label: 'MIST / Ultrasonic Debridements',
+      data: PROVIDERS.map(p => p.mistOrders),
+      backgroundColor: PROVIDERS.map(p => p.color),
+      borderRadius: 4
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+// Billing Comparison Table
+const billingBody = document.getElementById('billingComparisonBody');
+PROVIDERS.forEach(p => {
+  const totalDebr = Object.values(p.debridementCPT).reduce((a,b)=>a+b,0);
+  const totalSurg = Object.values(p.surgicalCPT).reduce((a,b)=>a+b,0);
+  const totalEm = Object.values(p.emCodes).reduce((a,b)=>a+b,0);
+  const totalComp = Object.values(p.compressionCodes).reduce((a,b)=>a+b,0);
+  billingBody.innerHTML += `
+    <tr>
+      <td><div class="provider-name"><div class="provider-avatar" style="background:${p.color}22; color:${p.color}">${p.initials}</div><div class="provider-info"><div class="name">${p.name}</div><div class="role">${p.specialty}</div></div></div></td>
+      <td><strong>${totalDebr}</strong></td>
+      <td>${totalSurg}</td>
+      <td><strong>${totalEm}</strong></td>
+      <td>${totalComp}</td>
+      <td><strong style="color:var(--success)">${p.z5189Count}</strong></td>
+      <td>${p.mistOrders}</td>
+      <td>${p.rxWritten}</td>
+      <td>${p.dmeOrders}</td>
+      <td>${p.radiologyOrders}</td>
+    </tr>
+  `;
+});
+
+// Heal Rate Comparison Chart
+new Chart(document.getElementById('healRateCompareChart'), {
+  type: 'bar',
+  data: {
+    labels: PROVIDERS.map(p => p.initials),
+    datasets: [{
+      label: 'Healing Rate %',
+      data: PROVIDERS.map(p => p.healingRate),
+      backgroundColor: PROVIDERS.map(p => p.color),
+      borderRadius: 4
+    }, {
+      label: 'Practice Avg (67%)',
+      data: PROVIDERS.map(() => 67),
+      type: 'line',
+      borderColor: '#94a3b8',
+      borderDash: [6, 4],
+      pointRadius: 0,
+      borderWidth: 2,
+      fill: false
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12, font: { size: 10 } } } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { min: 40, max: 90, grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { font: { size: 10 }, callback: v => v + '%' } }
+    }
+  }
+});
+
+// Days to Heal Chart
+new Chart(document.getElementById('daysToHealChart'), {
+  type: 'bar',
+  data: {
+    labels: PROVIDERS.map(p => p.initials),
+    datasets: [{
+      label: 'Avg Days to Heal',
+      data: PROVIDERS.map(p => p.avgDays),
+      backgroundColor: PROVIDERS.map(p => p.avgDays <= 55 ? '#16a34a' : p.avgDays <= 65 ? '#d4a732' : '#dc2626'),
+      borderRadius: 4
+    }, {
+      label: 'Practice Avg (58d)',
+      data: PROVIDERS.map(() => 58),
+      type: 'line',
+      borderColor: '#94a3b8',
+      borderDash: [6, 4],
+      pointRadius: 0,
+      borderWidth: 2,
+      fill: false
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12, font: { size: 10 } } } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { min: 30, max: 90, grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { font: { size: 10 }, callback: v => v + 'd' } }
+    }
+  }
+});
+
+// Weekly Volume Chart
+new Chart(document.getElementById('weeklyVolumeChart'), {
+  type: 'bar',
+  data: {
+    labels: PROVIDERS.map(p => p.initials),
+    datasets: [{
+      label: 'Avg Patients / Week',
+      data: PROVIDERS.map(p => p.weeklyVolume),
+      backgroundColor: PROVIDERS.map(p => p.color),
+      borderRadius: 4
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+// Monthly Volume Chart
+new Chart(document.getElementById('monthlyVolumeChart'), {
+  type: 'bar',
+  data: {
+    labels: PROVIDERS.map(p => p.initials),
+    datasets: [{
+      label: 'Patients / Month',
+      data: PROVIDERS.map(p => p.monthlyVolume),
+      backgroundColor: PROVIDERS.map(p => p.color),
+      borderRadius: 4
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+// New vs Follow-up Chart
+new Chart(document.getElementById('newVsFollowupChart'), {
+  type: 'bar',
+  data: {
+    labels: PROVIDERS.map(p => p.initials),
+    datasets: [
+      { label: 'New Patients', data: PROVIDERS.map(p => p.newPatients), backgroundColor: '#2d4a7a', borderRadius: 4 },
+      { label: 'Follow-up', data: PROVIDERS.map(p => p.followupPatients), backgroundColor: '#d4a732', borderRadius: 4 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12, font: { size: 10 } } } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+// Patients >16 Weeks Chart
+new Chart(document.getElementById('over16weeksChart'), {
+  type: 'bar',
+  data: {
+    labels: PROVIDERS.map(p => p.initials),
+    datasets: [{
+      label: 'Patients >16 Weeks',
+      data: PROVIDERS.map(p => p.ptsOver16w),
+      backgroundColor: PROVIDERS.map(p => p.ptsOver16w >= 12 ? '#dc2626' : p.ptsOver16w >= 9 ? '#d4a732' : '#16a34a'),
+      borderRadius: 4
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+// ABI Orders Chart (Total vs 30d)
+new Chart(document.getElementById('abiOrdersChart'), {
+  type: 'bar',
+  data: {
+    labels: PROVIDERS.map(p => p.initials),
+    datasets: [
+      { label: 'Total ABI Orders', data: PROVIDERS.map(p => p.abiOrders), backgroundColor: '#2d4a7a', borderRadius: 4 },
+      { label: 'Within 30 Days of First Visit', data: PROVIDERS.map(p => p.abiOrders30d), backgroundColor: '#16a34a', borderRadius: 4 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12, font: { size: 10 } } } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+// Venous US Chart
+new Chart(document.getElementById('venousUSChart'), {
+  type: 'bar',
+  data: {
+    labels: PROVIDERS.map(p => p.initials),
+    datasets: [
+      { label: 'Total Venous US', data: PROVIDERS.map(p => p.venousUS), backgroundColor: '#2d4a7a', borderRadius: 4 },
+      { label: 'Within 30 Days of First Visit', data: PROVIDERS.map(p => p.venousUS30d), backgroundColor: '#16a34a', borderRadius: 4 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12, font: { size: 10 } } } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+// Arterial US Chart
+new Chart(document.getElementById('arterialUSChart'), {
+  type: 'bar',
+  data: {
+    labels: PROVIDERS.map(p => p.initials),
+    datasets: [
+      { label: 'Total Arterial US', data: PROVIDERS.map(p => p.arterialUS), backgroundColor: '#2d4a7a', borderRadius: 4 },
+      { label: 'Within 30 Days of First Visit', data: PROVIDERS.map(p => p.arterialUS30d), backgroundColor: '#16a34a', borderRadius: 4 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12, font: { size: 10 } } } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+// Labs & Cultures Chart
+new Chart(document.getElementById('labsCulturesChart'), {
+  type: 'bar',
+  data: {
+    labels: PROVIDERS.map(p => p.initials),
+    datasets: [
+      { label: 'Total Labs', data: PROVIDERS.map(p => p.labOrders), backgroundColor: '#2d4a7a', borderRadius: 4 },
+      { label: 'Labs Within 30d', data: PROVIDERS.map(p => p.labOrders30d), backgroundColor: 'rgba(45,74,122,0.5)', borderRadius: 4 },
+      { label: 'Total Cultures', data: PROVIDERS.map(p => p.cultureOrders), backgroundColor: '#d4a732', borderRadius: 4 },
+      { label: 'Cultures Within 30d', data: PROVIDERS.map(p => p.cultureOrders30d), backgroundColor: 'rgba(212,167,50,0.5)', borderRadius: 4 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 8, font: { size: 9 } } } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+// Specialty Referrals Chart
+new Chart(document.getElementById('referralsChart'), {
+  type: 'bar',
+  data: {
+    labels: PROVIDERS.map(p => p.initials),
+    datasets: [
+      { label: 'Endocrinology', data: PROVIDERS.map(p => p.endoRef), backgroundColor: '#2d4a7a', borderRadius: 3 },
+      { label: 'WCE Vascular', data: PROVIDERS.map(p => p.vascRef), backgroundColor: '#d4a732', borderRadius: 3 },
+      { label: 'WCE Podiatry', data: PROVIDERS.map(p => p.podRef), backgroundColor: '#4a7ab5', borderRadius: 3 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12, font: { size: 10 } } } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+// ER Sends, Hospice & Palliative Chart
+new Chart(document.getElementById('erHospiceChart'), {
+  type: 'bar',
+  data: {
+    labels: PROVIDERS.map(p => p.initials),
+    datasets: [
+      { label: 'ER Sends', data: PROVIDERS.map(p => p.erSends), backgroundColor: '#dc2626', borderRadius: 3 },
+      { label: 'Hospice Referrals', data: PROVIDERS.map(p => p.hospiceRef), backgroundColor: '#7c3aed', borderRadius: 3 },
+      { label: 'Palliative Patients', data: PROVIDERS.map(p => p.palliativePts), backgroundColor: '#d4a732', borderRadius: 3 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12, font: { size: 10 } } } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+// Full Orders Table
+const fullOrdersBody = document.getElementById('fullOrdersBody');
+PROVIDERS.forEach(p => {
+  fullOrdersBody.innerHTML += `
+    <tr>
+      <td><div class="provider-name"><div class="provider-avatar" style="background:${p.color}22; color:${p.color}">${p.initials}</div><div class="provider-info"><div class="name">${p.name}</div></div></div></td>
+      <td>${p.palliativePts}</td>
+      <td>${p.mistOrders}</td>
+      <td>${p.abiOrders} / <strong style="color:var(--success)">${p.abiOrders30d}</strong></td>
+      <td>${p.venousUS} / <strong style="color:var(--success)">${p.venousUS30d}</strong></td>
+      <td>${p.arterialUS} / <strong style="color:var(--success)">${p.arterialUS30d}</strong></td>
+      <td>${p.labOrders} / <strong style="color:var(--success)">${p.labOrders30d}</strong></td>
+      <td>${p.cultureOrders} / <strong style="color:var(--success)">${p.cultureOrders30d}</strong></td>
+      <td>${p.endoRef}</td>
+      <td>${p.vascRef}</td>
+      <td>${p.podRef}</td>
+      <td><strong style="color:var(--danger)">${p.erSends}</strong></td>
+      <td><strong style="color:var(--purple)">${p.hospiceRef}</strong></td>
+    </tr>
+  `;
+});
+
 </script>
 </body>
 </html>
