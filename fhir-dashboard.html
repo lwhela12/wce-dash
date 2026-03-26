@@ -667,7 +667,7 @@
   <div class="tabs">
     <button class="tab active" data-tab="overview">Practice Overview</button>
     <button class="tab" data-tab="providers">Provider Performance</button>
-    <button class="tab" data-tab="billing">Billing Patterns</button>
+    <button class="tab" data-tab="billing">Codes & Orders</button>
     <button class="tab" data-tab="populations">Patient Populations</button>
     <button class="tab" data-tab="insights">AI Insights</button>
   </div>
@@ -742,7 +742,7 @@
         </div>
         <div class="scroll-y">
           <table class="provider-table" id="providerComparisonTable">
-            <thead><tr><th>Provider</th><th>Active Wounds</th><th>Healed</th><th>Healing Rate</th><th>Avg Days</th><th>Debride Rate</th><th>Pts &gt;16w</th></tr></thead>
+            <thead><tr><th>Provider</th><th>Active Wounds</th><th>Healed</th><th>Healing Rate</th><th>Avg Days</th><th>Debride / Wound</th><th>Pts &gt;16w</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
@@ -771,6 +771,36 @@
         <div class="scroll-y">
           <table class="provider-table" id="ordersReferralsTable">
             <thead><tr><th>Provider</th><th>ABI</th><th>Venous US</th><th>Arterial US</th><th>Labs</th><th>Cultures</th><th>Endo Ref</th><th>Vasc Ref</th><th>Pod Ref</th><th>DME</th><th>Rx</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="section-header">Treatment Protocol Averages <span class="line"></span></div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Debridements per Wound vs Company Average</span>
+            <span class="card-tag fhir">FHIR Encounter</span>
+          </div>
+          <div class="chart-container"><canvas id="debridePerWoundChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Compression Orders per Wound vs Company Average</span>
+            <span class="card-tag fhir">FHIR Encounter</span>
+          </div>
+          <div class="chart-container"><canvas id="compPerWoundChart"></canvas></div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:24px;">
+        <div class="card-header">
+          <span class="card-title">Protocol Adherence — All Metrics per Wound Treated</span>
+          <span class="card-tag fhir">FHIR Encounter + ServiceRequest</span>
+        </div>
+        <div class="scroll-y">
+          <table class="provider-table" id="protocolTable">
+            <thead><tr><th>Provider</th><th>Wounds</th><th>Debride/Wound</th><th>Compress/Wound</th><th>Surgical/Wound</th><th>E&M/Wound</th><th>MIST/Wound</th><th>Labs/Wound</th><th>Cultures/Wound</th><th>ABI/Wound</th><th>Referrals/Wound</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
@@ -844,47 +874,8 @@
         </div>
       </div>
 
-      <div class="section-header">Clinical Metrics by Provider <span class="line"></span></div>
+      <div class="section-header">Diagnostic Orders & Timing <span class="line"></span></div>
       <div class="grid-2">
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">Heal Rate by Provider vs Practice Average</span>
-            <span class="card-tag fhir">FHIR Condition</span>
-          </div>
-          <div class="chart-container"><canvas id="healRateVsAvgChart"></canvas></div>
-        </div>
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">Avg Days to Heal by Provider</span>
-            <span class="card-tag fhir">FHIR Condition</span>
-          </div>
-          <div class="chart-container"><canvas id="avgDaysChart"></canvas></div>
-        </div>
-      </div>
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">Weekly &amp; Monthly Volume per Provider</span>
-            <span class="card-tag fhir">FHIR Encounter</span>
-          </div>
-          <div class="chart-container"><canvas id="volumeChart"></canvas></div>
-        </div>
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">New vs Follow-up Patients</span>
-            <span class="card-tag fhir">FHIR Encounter</span>
-          </div>
-          <div class="chart-container"><canvas id="newFollowChart"></canvas></div>
-        </div>
-      </div>
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">Patients &gt;16 Weeks</span>
-            <span class="card-tag fhir">FHIR Condition</span>
-          </div>
-          <div class="chart-container"><canvas id="over16wChart"></canvas></div>
-        </div>
         <div class="card">
           <div class="card-header">
             <span class="card-title">ABI Orders (Total vs 30-Day)</span>
@@ -1154,14 +1145,14 @@ function renderOverview(providers, diagnoses, summary) {
 // ============================================================
 function renderProviders(providers) {
   const bestHealRate = providers.length ? Math.max(...providers.map(p => p.healingRate || 0)) : 0;
-  const avgDebride = avg(providers, 'debrideRate');
-  const avgAdherence = providers.length ? Math.round(providers.reduce((s, p) => s + (p.debrideRate || 0), 0) / providers.length) : 0;
+  const avgDebride = providers.length ? (providers.reduce((s, p) => s + (p.debridementsPerWound || 0), 0) / providers.length).toFixed(1) : '0';
+  const avgAdherence = providers.length ? (providers.reduce((s, p) => s + (p.debridementsPerWound || 0), 0) / providers.length).toFixed(1) : '0';
 
   document.getElementById('providerKpis').innerHTML = `
     <div class="kpi-card teal animate-in delay-1"><div class="kpi-label">Total Providers</div><div class="kpi-value">${providers.length}</div></div>
     <div class="kpi-card green animate-in delay-2"><div class="kpi-label">Best Healing Rate</div><div class="kpi-value">${bestHealRate}%</div></div>
-    <div class="kpi-card orange animate-in delay-3"><div class="kpi-label">Debridement Rate</div><div class="kpi-value">${avgDebride}%</div></div>
-    <div class="kpi-card purple animate-in delay-4"><div class="kpi-label">Protocol Adherence</div><div class="kpi-value">${avgAdherence}%</div></div>
+    <div class="kpi-card orange animate-in delay-3"><div class="kpi-label">Avg Debridements / Wound</div><div class="kpi-value">${avgDebride}x</div></div>
+    <div class="kpi-card purple animate-in delay-4"><div class="kpi-label">Total Healed</div><div class="kpi-value">${providers.reduce((s, p) => s + (p.healed || 0), 0)}</div></div>
   `;
 
   // Healing Rate by Provider
@@ -1191,7 +1182,7 @@ function renderProviders(providers) {
   // Provider Comparison table
   const tbody = document.querySelector('#providerComparisonTable tbody');
   tbody.innerHTML = providers.length
-    ? providers.map(p => `<tr><td>${provAvatar(p)}</td><td>${p.activeWounds || 0}</td><td>${p.healed || 0}</td><td>${miniBar(p.healingRate || 0, 100, p.color || '#2d4a7a')}</td><td>${p.avgDays || 0}</td><td>${p.debrideRate || 0}%</td><td>${p.ptsOver16w || 0}</td></tr>`).join('')
+    ? providers.map(p => `<tr><td>${provAvatar(p)}</td><td>${p.activeWounds || 0}</td><td>${p.healed || 0}</td><td>${miniBar(p.healingRate || 0, 100, p.color || '#2d4a7a')}</td><td>${p.avgDays || 0}</td><td>${p.debridementsPerWound || 0}x</td><td>${p.ptsOver16w || 0}</td></tr>`).join('')
     : '<tr><td colspan="7" class="no-data">No data</td></tr>';
 
   // E/M Code Distribution by Provider (stacked bar)
@@ -1228,6 +1219,60 @@ function renderProviders(providers) {
   const otbody = document.querySelector('#ordersReferralsTable tbody');
   otbody.innerHTML = providers.length
     ? providers.map(p => `<tr><td>${provAvatar(p)}</td><td>${p.abiOrders || 0}</td><td>${p.venousUS || 0}</td><td>${p.arterialUS || 0}</td><td>${p.labOrders || 0}</td><td>${p.cultureOrders || 0}</td><td>${p.endoRef || 0}</td><td>${p.vascRef || 0}</td><td>${p.podRef || 0}</td><td>${p.dmeOrders || 0}</td><td>${p.rxWritten || 0}</td></tr>`).join('')
+    : '<tr><td colspan="11" class="no-data">No data</td></tr>';
+
+  // --- Protocol Adherence Charts ---
+  const companyAvgDebride = avg(providers, 'debridementsPerWound');
+  const companyAvgCompress = avg(providers, 'compressionPerWound');
+
+  makeChart('debridePerWoundChart', {
+    type: 'bar',
+    data: {
+      labels: providers.map(p => p.name),
+      datasets: [
+        { label: 'Provider', data: providers.map(p => p.debridementsPerWound || 0), backgroundColor: providers.map((p, i) => provColor(p, i)), borderRadius: 4 },
+        { label: 'Company Avg (' + companyAvgDebride.toFixed(1) + ')', data: providers.map(() => companyAvgDebride), type: 'line', borderColor: '#dc2626', borderDash: [6, 3], pointRadius: 0, borderWidth: 2, fill: false }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, title: { display: true, text: 'Debridements per Wound' } } }, plugins: { legend: { position: 'bottom', labels: { font: { family: "'DM Sans'" } } } } }
+  });
+
+  makeChart('compPerWoundChart', {
+    type: 'bar',
+    data: {
+      labels: providers.map(p => p.name),
+      datasets: [
+        { label: 'Provider', data: providers.map(p => p.compressionPerWound || 0), backgroundColor: providers.map((p, i) => provColor(p, i)), borderRadius: 4 },
+        { label: 'Company Avg (' + companyAvgCompress.toFixed(1) + ')', data: providers.map(() => companyAvgCompress), type: 'line', borderColor: '#dc2626', borderDash: [6, 3], pointRadius: 0, borderWidth: 2, fill: false }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, title: { display: true, text: 'Compression Orders per Wound' } } }, plugins: { legend: { position: 'bottom', labels: { font: { family: "'DM Sans'" } } } } }
+  });
+
+  // Protocol table
+  const ptbody = document.querySelector('#protocolTable tbody');
+  ptbody.innerHTML = providers.length
+    ? providers.map(p => {
+        const highlight = (val, avg) => val < avg * 0.7 ? 'color:var(--danger);font-weight:700' : val > avg * 1.3 ? 'color:var(--success);font-weight:700' : '';
+        const avgD = companyAvgDebride, avgC = companyAvgCompress;
+        const avgS = avg(providers, 'surgicalPerWound'), avgE = avg(providers, 'emPerWound');
+        const avgM = avg(providers, 'mistPerWound'), avgL = avg(providers, 'labsPerWound');
+        const avgCu = avg(providers, 'culturesPerWound'), avgA = avg(providers, 'abiPerWound');
+        const avgR = avg(providers, 'referralsPerWound');
+        return `<tr>
+          <td>${provAvatar(p)}</td>
+          <td>${p.woundsTreated || 0}</td>
+          <td style="${highlight(p.debridementsPerWound, avgD)}">${p.debridementsPerWound || 0}</td>
+          <td style="${highlight(p.compressionPerWound, avgC)}">${p.compressionPerWound || 0}</td>
+          <td style="${highlight(p.surgicalPerWound, avgS)}">${p.surgicalPerWound || 0}</td>
+          <td>${p.emPerWound || 0}</td>
+          <td style="${highlight(p.mistPerWound, avgM)}">${p.mistPerWound || 0}</td>
+          <td style="${highlight(p.labsPerWound, avgL)}">${p.labsPerWound || 0}</td>
+          <td style="${highlight(p.culturesPerWound, avgCu)}">${p.culturesPerWound || 0}</td>
+          <td style="${highlight(p.abiPerWound, avgA)}">${p.abiPerWound || 0}</td>
+          <td style="${highlight(p.referralsPerWound, avgR)}">${p.referralsPerWound || 0}</td>
+        </tr>`;
+      }).join('')
     : '<tr><td colspan="11" class="no-data">No data</td></tr>';
 }
 
@@ -1357,66 +1402,6 @@ function renderBilling(providers) {
   document.getElementById('billingCompBody').innerHTML = billingRows.map(row =>
     '<tr><td style="font-weight:600;">' + row.label + '</td>' + providers.map(p => '<td>' + row.key(p) + '</td>').join('') + '</tr>'
   ).join('');
-
-  // Heal Rate vs Practice Average
-  const practiceAvg = avg(providers, 'healingRate');
-  makeChart('healRateVsAvgChart', {
-    type: 'bar',
-    data: {
-      labels: providers.map(p => p.name),
-      datasets: [
-        { label: 'Provider', data: providers.map(p => p.healingRate || 0), backgroundColor: providers.map((p, i) => provColor(p, i)), borderRadius: 4 },
-        { label: 'Practice Avg', data: providers.map(() => practiceAvg), type: 'line', borderColor: '#dc2626', borderDash: [6, 3], pointRadius: 0, borderWidth: 2, fill: false }
-      ]
-    },
-    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } }, plugins: { legend: { position: 'bottom', labels: { font: { family: "'DM Sans'" } } } } }
-  });
-
-  // Avg Days to Heal
-  makeChart('avgDaysChart', {
-    type: 'bar',
-    data: {
-      labels: providers.map(p => p.name),
-      datasets: [{ label: 'Avg Days', data: providers.map(p => p.avgDays || 0), backgroundColor: providers.map((p, i) => provColor(p, i)), borderRadius: 4 }]
-    },
-    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { display: false } } }
-  });
-
-  // Weekly & Monthly Volume
-  makeChart('volumeChart', {
-    type: 'bar',
-    data: {
-      labels: providers.map(p => p.name),
-      datasets: [
-        { label: 'Weekly', data: providers.map(p => p.weeklyVolume || 0), backgroundColor: '#2d4a7a', borderRadius: 4 },
-        { label: 'Monthly', data: providers.map(p => p.monthlyVolume || 0), backgroundColor: '#d4a732', borderRadius: 4 }
-      ]
-    },
-    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { position: 'bottom', labels: { font: { family: "'DM Sans'" } } } } }
-  });
-
-  // New vs Follow-up
-  makeChart('newFollowChart', {
-    type: 'bar',
-    data: {
-      labels: providers.map(p => p.name),
-      datasets: [
-        { label: 'New', data: providers.map(p => p.newPatients || 0), backgroundColor: '#2d4a7a', borderRadius: 4 },
-        { label: 'Follow-up', data: providers.map(p => p.followupPatients || 0), backgroundColor: '#4a7ab5', borderRadius: 4 }
-      ]
-    },
-    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { position: 'bottom', labels: { font: { family: "'DM Sans'" } } } } }
-  });
-
-  // Patients >16 Weeks
-  makeChart('over16wChart', {
-    type: 'bar',
-    data: {
-      labels: providers.map(p => p.name),
-      datasets: [{ label: 'Patients >16w', data: providers.map(p => p.ptsOver16w || 0), backgroundColor: providers.map((p, i) => provColor(p, i)), borderRadius: 4 }]
-    },
-    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { display: false } } }
-  });
 
   // ABI Orders (total vs 30d)
   makeChart('abiChart', {
@@ -1601,8 +1586,8 @@ function renderInsights(providers, diagnoses) {
 
   // Protocol adherence
   providers.forEach(p => {
-    if ((p.debrideRate || 0) < 80) {
-      alerts.push({ type: 'warning', text: `<strong>${p.name}</strong> debridement rate is ${p.debrideRate}% (target: 80%+). Low debridement utilization may impact healing velocity.` });
+    if ((p.debridementsPerWound || 0) < 1.0) {
+      alerts.push({ type: 'warning', text: `<strong>${p.name}</strong> averages ${p.debridementsPerWound || 0} debridements per wound (target: 1.0+). Low debridement utilization may impact healing velocity.` });
     }
   });
 

@@ -3,6 +3,7 @@ const express = require('express');
 const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
+const jwt = require('jsonwebtoken');
 const { FHIRClient } = require('./fhir-client');
 const { transformToDatabase } = require('./transform');
 const { deidentify } = require('./deidentify');
@@ -376,30 +377,33 @@ async function fetchAllFHIRData(accessToken) {
 let bulkTokenStore = { accessToken: null, expiresAt: null };
 
 // Step 1: Get JWT from AdvancedMD's JWKS API
-async function getJWT() {
-  console.log('  Step 1: Getting JWT from JWKS API...');
-  const basicAuth = Buffer.from(
-    `${process.env.FHIR_CLIENT_ID_BULK}:${process.env.FHIR_CLIENT_SECRET_BULK}`
-  ).toString('base64');
+function createSelfSignedJWT() {
+  const privateKey = fs.readFileSync(path.join(__dirname, 'private_key.pem'), 'utf8');
+  const issuer = process.env.FHIR_CLIENT_ID_BULK;
+  const aud = process.env.FHIR_TOKEN_URL;
+  const payload = {
+    iss: issuer,
+    sub: issuer,
+    aud: aud,
+    jti: crypto.randomUUID(),
+    exp: Math.floor(Date.now() / 1000) + 300
+  };
+  console.log('  JWT claims:', JSON.stringify({ iss: issuer.substring(0, 12) + '...', sub: issuer.substring(0, 12) + '...', aud, jti: payload.jti }));
 
-  const response = await fetch(process.env.FHIR_JWKS_TOKEN_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Authorization': `Basic ${basicAuth}`
-    },
-    body: 'grant_type=client_credentials&alg=rsa'
+  return jwt.sign(payload, privateKey, {
+    algorithm: 'RS384',
+    header: { kid: 'wce-dashboard-bulk-1', typ: 'JWT' }
   });
+}
 
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`JWKS token failed (${response.status}): ${err.substring(0, 300)}`);
-  }
-
-  const data = await response.json();
-  const jwt = data.token || data.jwt || data.access_token || data;
-  console.log('  JWT obtained.');
-  return typeof jwt === 'string' ? jwt : JSON.stringify(jwt);
+async function getJWT() {
+  // --- Approach B: Self-signed JWT (SMART Backend Services) ---
+  // We sign the JWT locally with our private key; AdvancedMD validates
+  // by fetching our registered JWKS URL.
+  console.log('  Step 1: Creating self-signed JWT (SMART Backend Services)...');
+  const selfSigned = createSelfSignedJWT();
+  console.log('  Self-signed JWT created.');
+  return selfSigned;
 }
 
 // Step 2: Exchange JWT + provider credentials for access token
@@ -412,18 +416,25 @@ async function getBulkToken() {
   const jwt = await getJWT();
 
   console.log('  Step 2: Exchanging JWT for access token...');
+  const tokenParams = {
+    client_id: process.env.FHIR_CLIENT_ID_BULK,
+    client_assertion: jwt,
+    client_assertion_type: 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
+    scope: 'system/*.read',
+    grant_type: 'client_credentials',
+    username: process.env.FHIR_PROVIDER_USERNAME,
+    password: process.env.FHIR_PROVIDER_PASSWORD,
+    officekey: process.env.FHIR_PROVIDER_OFFICEKEY
+  };
+  console.log('  Token request params (no secrets):', JSON.stringify({
+    ...tokenParams,
+    client_assertion: tokenParams.client_assertion.substring(0, 30) + '...',
+    password: '***'
+  }, null, 2));
   const response = await fetch(process.env.FHIR_TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_assertion: jwt,
-      client_assertion_type: 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
-      scope: 'system/*.read',
-      grant_type: 'client_credentials',
-      username: process.env.FHIR_PROVIDER_USERNAME,
-      password: process.env.FHIR_PROVIDER_PASSWORD,
-      officekey: process.env.FHIR_PROVIDER_OFFICEKEY
-    })
+    body: new URLSearchParams(tokenParams)
   });
 
   if (!response.ok) {

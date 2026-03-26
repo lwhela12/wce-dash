@@ -324,7 +324,24 @@ function generateCondition(patientId, practitioner, dx, date, isActive) {
   return cond;
 }
 
-function generateEncounter(patientId, practitioner, location, date, isNew) {
+function generateEncounter(patientId, practitioner, location, date, isNew, cptCodes) {
+  // Build type array — AdvancedMD puts CPT codes here
+  const typeArray = [];
+
+  // Add each CPT code as a type entry (matching AdvancedMD format)
+  if (cptCodes && cptCodes.length > 0) {
+    for (const cpt of cptCodes) {
+      typeArray.push({
+        coding: [{
+          system: cpt.code.match(/^[A-Z]/) ? 'https://www.cms.gov/Medicare/Coding/HCPCSReleaseCodeSets' : 'http://www.ama-assn.org/go/cpt',
+          code: cpt.code,
+          display: cpt.display
+        }],
+        text: cpt.display
+      });
+    }
+  }
+
   return {
     resourceType: 'Encounter',
     id: `enc-${uid()}`,
@@ -335,7 +352,7 @@ function generateEncounter(patientId, practitioner, location, date, isNew) {
       code: 'AMB',
       display: 'ambulatory'
     },
-    type: [{
+    type: typeArray.length > 0 ? typeArray : [{
       coding: [{ code: isNew ? 'new-patient' : 'follow-up', display: isNew ? 'New Patient Visit' : 'Follow-up Visit' }],
       text: isNew ? 'New Patient Visit' : 'Follow-up Visit'
     }],
@@ -557,40 +574,41 @@ function generateSyntheticData() {
     }
 
     // Encounters (2-12 visits over the data period)
+    // CPT codes go in Encounter.type (matching AdvancedMD format)
     const visitCount = 2 + Math.floor(Math.random() * 10);
     for (let v = 0; v < visitCount; v++) {
       const visitDate = v === 0 ? firstVisitDate : randomDate(CONFIG.monthsOfData, 0);
       const visitPract = Math.random() > 0.3 ? pract : pick(PRACTITIONERS);
       const isNew = v === 0;
-      data.encounters.push(generateEncounter(patId, visitPract, loc, visitDate, isNew));
+
+      // Build CPT codes for this encounter
+      const encounterCPTs = [];
 
       // E/M code for each visit
-      const emCode = pickWeighted(EM_CODES);
-      data.procedures.push(generateProcedure(patId, visitPract, emCode, visitDate));
+      encounterCPTs.push(pickWeighted(EM_CODES));
 
       // Debridement on ~60% of visits
       if (Math.random() < 0.6) {
-        const debProc = pickWeighted(DEBRIDEMENT_PROCEDURES);
-        data.procedures.push(generateProcedure(patId, visitPract, debProc, visitDate));
+        encounterCPTs.push(pickWeighted(DEBRIDEMENT_PROCEDURES));
       }
 
       // Surgical procedure on ~8% of visits
       if (Math.random() < 0.08) {
-        const surgProc = pickWeighted(SURGICAL_PROCEDURES);
-        data.procedures.push(generateProcedure(patId, visitPract, surgProc, visitDate));
+        encounterCPTs.push(pickWeighted(SURGICAL_PROCEDURES));
       }
 
       // MIST on ~5% of visits
       if (Math.random() < 0.05) {
-        const mistProc = pickWeighted(MIST_PROCEDURES);
-        data.procedures.push(generateProcedure(patId, visitPract, mistProc, visitDate));
+        encounterCPTs.push(pickWeighted(MIST_PROCEDURES));
       }
 
       // Compression on ~25% of visits
       if (Math.random() < 0.25) {
-        const compCode = pickWeighted(COMPRESSION_CODES);
-        data.procedures.push(generateProcedure(patId, visitPract, compCode, visitDate));
+        encounterCPTs.push(pickWeighted(COMPRESSION_CODES));
       }
+
+      // Generate encounter with embedded CPT codes
+      data.encounters.push(generateEncounter(patId, visitPract, loc, visitDate, isNew, encounterCPTs));
 
       // Wound measurements on ~70% of visits
       if (Math.random() < 0.7) {

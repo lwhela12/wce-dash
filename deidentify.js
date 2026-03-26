@@ -89,7 +89,21 @@ function stripProviderPHI(provider) {
     compressionCodes: provider.compressionCodes || {},
     debridementCPT: provider.debridementCPT || {},
     surgicalCPT: provider.surgicalCPT || {},
-    emCodes: provider.emCodes || {}
+    emCodes: provider.emCodes || {},
+
+    // Protocol adherence — per wound ratios
+    debridementsPerWound: provider.debridementsPerWound || 0,
+    compressionPerWound: provider.compressionPerWound || 0,
+    surgicalPerWound: provider.surgicalPerWound || 0,
+    emPerWound: provider.emPerWound || 0,
+    mistPerWound: provider.mistPerWound || 0,
+    labsPerWound: provider.labsPerWound || 0,
+    culturesPerWound: provider.culturesPerWound || 0,
+    abiPerWound: provider.abiPerWound || 0,
+    referralsPerWound: provider.referralsPerWound || 0,
+
+    // Aggregate insight metrics (no PHI — just counts)
+    unresolvedWounds: provider.unresolvedWounds || 0
   };
 }
 

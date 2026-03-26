@@ -170,13 +170,69 @@ function transformToDatabase(fhirData) {
     };
   }
 
-  // Find first encounter date per patient
+  // Find first encounter date per patient AND track Z51.89 closure encounters
+  // Also build per-patient wound timeline for heal rate calculation
+  const patientWoundTimeline = {}; // patId → { firstWoundEncounter, closureDate, closurePractitioner, lastEncounter }
+
   for (const enc of encounters) {
     const patId = getPatientRef(enc);
     const date = enc.period?.start || enc.meta?.lastUpdated;
     if (patId && patientMap[patId] && date) {
       if (!patientMap[patId].firstEncounterDate || date < patientMap[patId].firstEncounterDate) {
         patientMap[patId].firstEncounterDate = date;
+      }
+    }
+
+    // Track Z51.89 closure encounters from Encounter.type or Encounter.diagnosis
+    const practId = getPractitionerRef(enc);
+    let isClosureEncounter = false;
+
+    // Check encounter type codes
+    for (const typeEntry of (enc.type || [])) {
+      for (const coding of (typeEntry.coding || [])) {
+        if (coding.code === CLOSURE_CODE) isClosureEncounter = true;
+      }
+    }
+
+    // Check encounter diagnosis references
+    for (const dx of (enc.diagnosis || [])) {
+      const dxCodes = dx.condition?.display || '';
+      if (dxCodes.includes('Z51.89') || dxCodes.includes('aftercare')) isClosureEncounter = true;
+    }
+
+    if (!patientWoundTimeline[patId]) {
+      patientWoundTimeline[patId] = { firstWoundEncounter: null, closureDate: null, closurePractitioner: null, lastEncounter: null };
+    }
+    const timeline = patientWoundTimeline[patId];
+
+    if (date) {
+      if (!timeline.firstWoundEncounter || date < timeline.firstWoundEncounter) {
+        timeline.firstWoundEncounter = date;
+      }
+      if (!timeline.lastEncounter || date > timeline.lastEncounter) {
+        timeline.lastEncounter = date;
+      }
+    }
+
+    if (isClosureEncounter && date) {
+      timeline.closureDate = date;
+      timeline.closurePractitioner = practId;
+    }
+  }
+
+  // Also check Conditions for Z51.89 to catch closures coded as diagnoses
+  for (const cond of conditions) {
+    const codes = getAllCodes(cond);
+    if (!codes.includes(CLOSURE_CODE)) continue;
+    const patId = getPatientRef(cond);
+    const practId = getPractitionerRef(cond);
+    const date = cond.onsetDateTime || cond.recordedDate || cond.meta?.lastUpdated;
+
+    if (patId && patientWoundTimeline[patId] && date) {
+      const timeline = patientWoundTimeline[patId];
+      if (!timeline.closureDate || date > timeline.closureDate) {
+        timeline.closureDate = date;
+        timeline.closurePractitioner = practId;
       }
     }
   }
@@ -214,7 +270,9 @@ function transformToDatabase(fhirData) {
         _healDays: [],
         _woundPatients: new Set(),
         _healedPatients: new Set(),
-        _encounterDates: []
+        _encounterDates: [],
+        _closureEncounters: [], // Z51.89 encounter dates per patient
+        _unresolvedWounds: 0    // active wounds with no encounter in 60+ days
       };
     }
     return providerStats[practId];
@@ -453,19 +511,74 @@ function transformToDatabase(fhirData) {
     }
   }
 
-  // --- Calculate derived metrics per provider ---
+  // --- Calculate Z51.89-based heal rates per provider ---
+  // Blended approach:
+  //   Primary: Z51.89 closure encounters (most reliable for WCE)
+  //   Secondary: Condition abatement dates (if providers resolve conditions)
+  //   Tertiary: Encounter gap >60 days on active wounds (inferred healing)
+
+  // Count closures per provider from the patient wound timelines
+  const providerClosures = {}; // practId → { closureCount, closureDays[] }
+  // 'now' already declared above in encounter processing
+
+  for (const [patId, timeline] of Object.entries(patientWoundTimeline)) {
+    if (timeline.closureDate && timeline.firstWoundEncounter) {
+      const practId = timeline.closurePractitioner;
+      if (practId) {
+        if (!providerClosures[practId]) providerClosures[practId] = { closureCount: 0, closureDays: [] };
+        providerClosures[practId].closureCount++;
+        providerClosures[practId].closureDays.push(daysBetween(timeline.firstWoundEncounter, timeline.closureDate));
+      }
+    }
+
+    // Tertiary: infer healing from encounter gap
+    if (!timeline.closureDate && timeline.lastEncounter) {
+      const daysSinceLastVisit = daysBetween(timeline.lastEncounter, now);
+      if (daysSinceLastVisit > 60) {
+        // Patient stopped coming — possibly healed, possibly lost
+        // We track but don't count as definitive closure
+      }
+    }
+  }
+
   const providerColors = ['#2d4a7a', '#d4a732', '#4a7ab5', '#16a34a', '#dc2626', '#6b8db5', '#7c3aed', '#f59e0b'];
 
   const PROVIDERS = Object.values(providerStats).map((stats, i) => {
-    // Calculate heal rate
+    const closureData = providerClosures[stats.id] || { closureCount: 0, closureDays: [] };
+
+    // Blended heal rate:
+    // Use Z51.89 closures as primary healed count (most reliable)
+    // Fall back to Condition abatement if more closures found that way
+    const z5189Healed = closureData.closureCount;
+    const conditionHealed = stats.healed; // from Condition.abatementDateTime
+    const bestHealed = Math.max(z5189Healed, conditionHealed);
+
     if (stats.woundsTreated > 0) {
-      stats.healingRate = Math.round((stats.healed / stats.woundsTreated) * 100);
+      stats.healingRate = Math.round((bestHealed / stats.woundsTreated) * 100);
+      stats.healed = bestHealed;
     }
 
-    // Calculate avg days to heal
-    if (stats._healDays.length > 0) {
-      stats.avgDays = Math.round(stats._healDays.reduce((a, b) => a + b, 0) / stats._healDays.length);
+    // Blended days to heal:
+    // Primary: Z51.89 closure dates (first encounter → closure encounter)
+    // Secondary: Condition onset → abatement
+    const allHealDays = [...closureData.closureDays, ...stats._healDays];
+    // Deduplicate by taking unique values (rough dedup)
+    const uniqueHealDays = [...new Set(allHealDays)];
+    if (uniqueHealDays.length > 0) {
+      stats.avgDays = Math.round(uniqueHealDays.reduce((a, b) => a + b, 0) / uniqueHealDays.length);
     }
+
+    // Track unresolved wounds (active with no visit in 60+ days)
+    let unresolvedCount = 0;
+    for (const patId of stats._woundPatients) {
+      const timeline = patientWoundTimeline[patId];
+      if (timeline && !timeline.closureDate && timeline.lastEncounter) {
+        if (daysBetween(timeline.lastEncounter, now) > 60) {
+          unresolvedCount++;
+        }
+      }
+    }
+    stats._unresolvedWounds = unresolvedCount;
 
     // Calculate volume metrics
     if (stats._encounterDates.length > 0) {
@@ -476,16 +589,30 @@ function transformToDatabase(fhirData) {
       stats.monthlyVolume = Math.round(stats._encounterDates.length / spanMonths);
     }
 
-    // Calculate debridement rate
+    // Protocol adherence metrics — per wound ratios
     const totalDebridements = Object.values(stats.debridementCPT).reduce((a, b) => a + b, 0);
-    stats.debrideRate = stats.woundsTreated > 0 ? Math.round((totalDebridements / stats.woundsTreated) * 100) : 0;
-
-    // Calculate compression rate for VLU
     const totalCompression = Object.values(stats.compressionCodes).reduce((a, b) => a + b, 0);
-    stats.compressionVLU = totalCompression; // We'd need VLU-specific patient count for a real rate
+    const totalSurgical = Object.values(stats.surgicalCPT).reduce((a, b) => a + b, 0);
+    const totalEM = Object.values(stats.emCodes).reduce((a, b) => a + b, 0);
+    const w = stats.woundsTreated || 1; // avoid division by zero
+
+    stats.debrideRate = Math.round((totalDebridements / w) * 100); // % — legacy name but now "per 100 wounds"
+    stats.debridementsPerWound = parseFloat((totalDebridements / w).toFixed(1));
+    stats.compressionPerWound = parseFloat((totalCompression / w).toFixed(1));
+    stats.surgicalPerWound = parseFloat((totalSurgical / w).toFixed(1));
+    stats.emPerWound = parseFloat((totalEM / w).toFixed(1));
+    stats.mistPerWound = parseFloat((stats.mistOrders / w).toFixed(2));
+    stats.labsPerWound = parseFloat((stats.labOrders / w).toFixed(1));
+    stats.culturesPerWound = parseFloat((stats.cultureOrders / w).toFixed(1));
+    stats.abiPerWound = parseFloat((stats.abiOrders / w).toFixed(2));
+    stats.referralsPerWound = parseFloat(((stats.endoRef + stats.vascRef + stats.podRef) / w).toFixed(2));
+    stats.compressionVLU = totalCompression;
 
     // Assign color
     stats.color = providerColors[i % providerColors.length];
+
+    // Preserve unresolvedWounds for AI insights
+    stats.unresolvedWounds = stats._unresolvedWounds;
 
     // Clean up internal tracking fields
     delete stats._patients;
@@ -493,6 +620,8 @@ function transformToDatabase(fhirData) {
     delete stats._woundPatients;
     delete stats._healedPatients;
     delete stats._encounterDates;
+    delete stats._closureEncounters;
+    delete stats._unresolvedWounds;
 
     return stats;
   });
