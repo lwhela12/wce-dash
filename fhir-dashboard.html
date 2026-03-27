@@ -144,6 +144,25 @@
   }
   .refresh-btn:hover { background: var(--surface-3); }
 
+  .connect-btn {
+    padding: 6px 14px;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-sm);
+    background: var(--accent);
+    font-family: var(--font);
+    font-size: 12px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #fff;
+    transition: opacity 0.15s;
+  }
+  .connect-btn:hover { opacity: 0.85; }
+  .connect-btn.connected {
+    background: var(--success);
+    border-color: var(--success);
+  }
+  .connect-btn.connected:hover { background: var(--danger); border-color: var(--danger); }
+
   /* === LAYOUT === */
   .main {
     padding: 24px 32px;
@@ -651,6 +670,7 @@
     </div>
   </div>
   <div class="header-right">
+    <button class="connect-btn" id="connectBtn" onclick="handleConnect()">Connect to AdvancedMD</button>
     <div class="data-badge" id="dataBadge">
       <span class="dot" id="statusDot"></span>
       <span id="statusText">Loading...</span>
@@ -1647,8 +1667,68 @@ function renderInsights(providers, diagnoses) {
 }
 
 // ============================================================
+//  AUTH — connect / disconnect
+// ============================================================
+let authConnected = false;
+
+async function checkAuthStatus() {
+  try {
+    const res = await fetch('/api/auth/status');
+    const status = await res.json();
+    authConnected = status.connected;
+    const btn = document.getElementById('connectBtn');
+    if (authConnected) {
+      btn.textContent = 'Connected';
+      btn.classList.add('connected');
+      btn.title = 'Click to disconnect';
+    } else {
+      btn.textContent = 'Connect to AdvancedMD';
+      btn.classList.remove('connected');
+      btn.title = '';
+    }
+  } catch (e) {
+    console.error('Auth status check failed:', e);
+  }
+}
+
+function handleConnect() {
+  if (authConnected) {
+    if (confirm('Disconnect from AdvancedMD? Dashboard will fall back to synthetic data.')) {
+      fetch('/api/auth/disconnect', { method: 'POST' }).then(() => {
+        authConnected = false;
+        checkAuthStatus();
+        fetchData();
+      });
+    }
+  } else {
+    window.location.href = '/auth/launch';
+  }
+}
+
+// On load: handle OAuth redirect results
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('auth') === 'success') {
+  // Show brief success toast, then clean URL
+  const toast = document.createElement('div');
+  toast.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#16a34a;color:#fff;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:500;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.15);';
+  toast.textContent = 'Connected to AdvancedMD — loading live data...';
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 5000);
+  history.replaceState({}, '', '/');
+} else if (urlParams.get('auth') === 'error') {
+  const msg = urlParams.get('message') || 'Unknown error';
+  const toast = document.createElement('div');
+  toast.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#dc2626;color:#fff;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:500;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.15);max-width:600px;text-align:center;';
+  toast.textContent = 'Auth failed: ' + decodeURIComponent(msg);
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 10000);
+  history.replaceState({}, '', '/');
+}
+
+// ============================================================
 //  INIT
 // ============================================================
+checkAuthStatus();
 fetchData();
 </script>
 </body>

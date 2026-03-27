@@ -33,6 +33,9 @@ const FHIR_BASE_URL = 'https://providerapi.advancedmd.com/v1/r4';
 // the 18 HIPAA identifiers.
 // ========================================
 
+// In-memory PKCE verifier (per OAuth session)
+let pkceVerifier = null;
+
 // In-memory token store (never written to disk)
 let tokenStore = {
   accessToken: null,
@@ -52,6 +55,15 @@ const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
 const fhirClient = new FHIRClient({
   baseUrl: FHIR_BASE_URL,
   tokenUrl: process.env.FHIR_TOKEN_URL
+});
+
+// ========================================
+// JWKS endpoint — serves public key with correct Content-Type
+// ========================================
+app.get('/.well-known/jwks.json', (req, res) => {
+  const jwks = JSON.parse(fs.readFileSync(path.join(__dirname, 'jwks.json'), 'utf8'));
+  res.setHeader('Content-Type', 'application/json');
+  res.json(jwks);
 });
 
 // ========================================
@@ -117,17 +129,26 @@ app.get('/auth/launch', (req, res) => {
   const state = crypto.randomBytes(16).toString('hex');
   res.cookie('oauth_state', state, { httpOnly: true, maxAge: 600000 });
 
+  // PKCE: generate code_verifier and code_challenge (S256)
+  pkceVerifier = crypto.randomBytes(32).toString('base64url');
+  const codeChallenge = crypto
+    .createHash('sha256')
+    .update(pkceVerifier)
+    .digest('base64url');
+
   const params = new URLSearchParams({
     response_type: 'code',
     client_id: process.env.FHIR_CLIENT_ID_BULK,
     redirect_uri: process.env.REDIRECT_URI,
-    scope: 'openid fhirUser offline_access online_access launch/patient user/*.read',
+    scope: 'openid fhirUser offline_access online_access',
     state: state,
-    aud: 'https://providerapi.advancedmd.com/v1/r4'
+    aud: 'https://providerapi.advancedmd.com/v1/r4',
+    code_challenge: codeChallenge,
+    code_challenge_method: 'S256'
   });
 
   const authUrl = `${process.env.FHIR_AUTH_URL}?${params.toString()}`;
-  console.log('\n--- SMART Launch ---');
+  console.log('\n--- SMART Launch (PKCE) ---');
   console.log('Redirecting to:', authUrl);
   res.redirect(authUrl);
 });
@@ -165,7 +186,8 @@ app.get('/auth/callback', async (req, res) => {
       body: new URLSearchParams({
         grant_type: 'authorization_code',
         code: code,
-        redirect_uri: process.env.REDIRECT_URI
+        redirect_uri: process.env.REDIRECT_URI,
+        code_verifier: pkceVerifier
       })
     });
 
@@ -376,34 +398,21 @@ async function fetchAllFHIRData(accessToken) {
 
 let bulkTokenStore = { accessToken: null, expiresAt: null };
 
-// Step 1: Get JWT from AdvancedMD's JWKS API
+// Step 1: Create self-signed JWT (SMART Backend Services / private_key_jwt)
 function createSelfSignedJWT() {
   const privateKey = fs.readFileSync(path.join(__dirname, 'private_key.pem'), 'utf8');
-  const issuer = process.env.FHIR_CLIENT_ID_BULK;
-  const aud = process.env.FHIR_TOKEN_URL;
-  const payload = {
-    iss: issuer,
-    sub: issuer,
-    aud: aud,
+  const clientId = process.env.FHIR_CLIENT_ID_BULK;
+
+  return jwt.sign({
+    iss: clientId,
+    sub: clientId,
+    aud: process.env.FHIR_TOKEN_URL,
     jti: crypto.randomUUID(),
     exp: Math.floor(Date.now() / 1000) + 300
-  };
-  console.log('  JWT claims:', JSON.stringify({ iss: issuer.substring(0, 12) + '...', sub: issuer.substring(0, 12) + '...', aud, jti: payload.jti }));
-
-  return jwt.sign(payload, privateKey, {
-    algorithm: 'RS384',
+  }, privateKey, {
+    algorithm: 'RS256',
     header: { kid: 'wce-dashboard-bulk-1', typ: 'JWT' }
   });
-}
-
-async function getJWT() {
-  // --- Approach B: Self-signed JWT (SMART Backend Services) ---
-  // We sign the JWT locally with our private key; AdvancedMD validates
-  // by fetching our registered JWKS URL.
-  console.log('  Step 1: Creating self-signed JWT (SMART Backend Services)...');
-  const selfSigned = createSelfSignedJWT();
-  console.log('  Self-signed JWT created.');
-  return selfSigned;
 }
 
 // Step 2: Exchange JWT + provider credentials for access token
@@ -412,29 +421,32 @@ async function getBulkToken() {
     return bulkTokenStore.accessToken;
   }
 
-  console.log('\n--- Bulk API: Authenticating ---');
-  const jwt = await getJWT();
+  console.log('\n--- Bulk API: Authenticating (private_key_jwt) ---');
+  const jwtToken = createSelfSignedJWT();
+  console.log('  Self-signed JWT created.');
 
-  console.log('  Step 2: Exchanging JWT for access token...');
-  const tokenParams = {
-    client_id: process.env.FHIR_CLIENT_ID_BULK,
-    client_assertion: jwt,
-    client_assertion_type: 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
-    scope: 'system/*.read',
-    grant_type: 'client_credentials',
-    username: process.env.FHIR_PROVIDER_USERNAME,
-    password: process.env.FHIR_PROVIDER_PASSWORD,
-    officekey: process.env.FHIR_PROVIDER_OFFICEKEY
-  };
-  console.log('  Token request params (no secrets):', JSON.stringify({
-    ...tokenParams,
-    client_assertion: tokenParams.client_assertion.substring(0, 30) + '...',
-    password: '***'
-  }, null, 2));
-  const response = await fetch(process.env.FHIR_TOKEN_URL, {
+  const tokenUrl = process.env.FHIR_JWKS_TOKEN_URL;
+  console.log('  Token URL:', tokenUrl);
+
+  const basicAuth = Buffer.from(
+    `${process.env.FHIR_CLIENT_ID_BULK}:${process.env.FHIR_CLIENT_SECRET_BULK}`
+  ).toString('base64');
+
+  const response = await fetch(tokenUrl, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams(tokenParams)
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': `Basic ${basicAuth}`
+    },
+    body: new URLSearchParams({
+      grant_type: 'client_credentials',
+      scope: 'system/*.read',
+      algorithm: 'RS384',
+      username: process.env.FHIR_PROVIDER_USERNAME,
+      password: process.env.FHIR_PROVIDER_PASSWORD,
+      officekey: process.env.FHIR_PROVIDER_OFFICEKEY,
+      publickeyurl: process.env.FHIR_JWKS_PUBLIC_URL
+    })
   });
 
   if (!response.ok) {
