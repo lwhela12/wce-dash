@@ -399,19 +399,27 @@ async function fetchAllFHIRData(accessToken) {
 let bulkTokenStore = { accessToken: null, expiresAt: null };
 
 // Step 1: Create self-signed JWT (SMART Backend Services / private_key_jwt)
-function createSelfSignedJWT() {
+function createSelfSignedJWT(tokenUrl) {
   const privateKey = fs.readFileSync(path.join(__dirname, 'private_key.pem'), 'utf8');
   const clientId = process.env.FHIR_CLIENT_ID_BULK;
+
+  // aud must match the token endpoint we're actually hitting
+  const audience = tokenUrl || process.env.FHIR_JWKS_TOKEN_URL || process.env.FHIR_TOKEN_URL;
 
   return jwt.sign({
     iss: clientId,
     sub: clientId,
-    aud: process.env.FHIR_TOKEN_URL,
-    jti: crypto.randomUUID(),
-    exp: Math.floor(Date.now() / 1000) + 300
+    aud: audience,
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(Date.now() / 1000) + 300,
+    jti: crypto.randomUUID()
   }, privateKey, {
-    algorithm: 'RS256',
-    header: { kid: 'wce-dashboard-bulk-1', typ: 'JWT' }
+    algorithm: 'RS384',   // Must match jwks.json "alg": "RS384"
+    header: {
+      kid: 'wce-dashboard-bulk-1',
+      typ: 'JWT',
+      jku: process.env.FHIR_JWKS_PUBLIC_URL   // Tells server where to fetch public key
+    }
   });
 }
 
@@ -422,40 +430,51 @@ async function getBulkToken() {
   }
 
   console.log('\n--- Bulk API: Authenticating (private_key_jwt) ---');
-  const jwtToken = createSelfSignedJWT();
-  console.log('  Self-signed JWT created.');
 
   const tokenUrl = process.env.FHIR_JWKS_TOKEN_URL;
   console.log('  Token URL:', tokenUrl);
 
-  const basicAuth = Buffer.from(
-    `${process.env.FHIR_CLIENT_ID_BULK}:${process.env.FHIR_CLIENT_SECRET_BULK}`
-  ).toString('base64');
+  const jwtToken = createSelfSignedJWT(tokenUrl);
+  console.log('  Self-signed JWT created (RS384, kid=wce-dashboard-bulk-1).');
 
-  const response = await fetch(tokenUrl, {
+  // SMART Backend Services: POST to /v1/oauth2/token with client_assertion
+  // Requires JWKS URL to be registered with AdvancedMD for this client_id.
+  // Contact AdvancedMD InterOps: https://www.advancedmd.com/support/interoperability/
+  const stdTokenUrl = process.env.FHIR_TOKEN_URL;
+  const jwtForStdEndpoint = createSelfSignedJWT(stdTokenUrl);
+
+  console.log(`  Token endpoint: ${stdTokenUrl}`);
+  console.log(`  JWKS URL: ${process.env.FHIR_JWKS_PUBLIC_URL}`);
+
+  const response = await fetch(stdTokenUrl, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Authorization': `Basic ${basicAuth}`
-    },
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       grant_type: 'client_credentials',
       scope: 'system/*.read',
-      algorithm: 'RS384',
-      username: process.env.FHIR_PROVIDER_USERNAME,
-      password: process.env.FHIR_PROVIDER_PASSWORD,
-      officekey: process.env.FHIR_PROVIDER_OFFICEKEY,
-      publickeyurl: process.env.FHIR_JWKS_PUBLIC_URL
+      client_assertion_type: 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
+      client_assertion: jwtForStdEndpoint
     })
   });
 
   if (!response.ok) {
     const err = await response.text();
+    console.error(`  ✗ Token request failed (${response.status}): ${err.substring(0, 300)}`);
+
+    if (err.includes('Public key url is invalid')) {
+      throw new Error(
+        'JWKS URL not registered with AdvancedMD. ' +
+        'Contact InterOps support to associate your JWKS URL ' +
+        `(${process.env.FHIR_JWKS_PUBLIC_URL}) with client ID ${process.env.FHIR_CLIENT_ID_BULK}. ` +
+        'See: https://www.advancedmd.com/support/interoperability/'
+      );
+    }
+
     throw new Error(`Token exchange failed (${response.status}): ${err.substring(0, 300)}`);
   }
 
   const tokenData = await response.json();
-  console.log('  Access token received! Expires in:', tokenData.expires_in, 'seconds');
+  console.log('  ✓ Access token received! Expires in:', tokenData.expires_in, 'seconds');
 
   bulkTokenStore = {
     accessToken: tokenData.access_token,
