@@ -11,6 +11,7 @@ const { generateSyntheticData } = require('./synthetic-data');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const PUBLIC_DIR = path.join(__dirname, 'public');
 
 // Resolve FHIR base URL from mode
 const FHIR_MODE = process.env.FHIR_MODE || 'test';
@@ -51,11 +52,19 @@ let metricsCache = {
 };
 
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
+const LOCAL_BULK_METRICS_PATH = path.join(__dirname, 'data', 'bulk-dashboard-metrics.json');
 
 const fhirClient = new FHIRClient({
   baseUrl: FHIR_BASE_URL,
   tokenUrl: process.env.FHIR_TOKEN_URL
 });
+
+function readLocalBulkDashboardMetrics() {
+  if (!fs.existsSync(LOCAL_BULK_METRICS_PATH)) return null;
+  const payload = JSON.parse(fs.readFileSync(LOCAL_BULK_METRICS_PATH, 'utf8'));
+  if (!payload?.data) return null;
+  return payload;
+}
 
 // ========================================
 // JWKS endpoint — serves public key with correct Content-Type
@@ -66,14 +75,24 @@ app.get('/.well-known/jwks.json', (req, res) => {
   res.json(jwks);
 });
 
-// ========================================
-// STATIC FILES
-// ========================================
-
-app.use(express.static(path.join(__dirname), {
-  index: false
-}));
 app.use(express.json());
+
+// ========================================
+// PUBLIC ASSETS
+// ========================================
+// Never serve the repository root. Raw FHIR downloads, generated metrics,
+// scripts, keys, docs, and local config live under the project directory and
+// must not become browseable web assets.
+if (fs.existsSync(PUBLIC_DIR)) {
+  app.use('/assets', express.static(PUBLIC_DIR, {
+    index: false,
+    fallthrough: false
+  }));
+}
+
+app.get('/WCE_Specialty_Logo_update_healing.jpeg.jpg', (req, res) => {
+  res.sendFile(path.join(__dirname, 'WCE_Specialty_Logo_update_healing.jpeg.jpg'));
+});
 
 // ========================================
 // DEBUG: Test a single FHIR resource
@@ -270,6 +289,20 @@ app.post('/api/auth/disconnect', (req, res) => {
 app.get('/api/dashboard-data', async (req, res) => {
   const forceRefresh = req.query.refresh === 'true';
 
+  const localBulkMetrics = readLocalBulkDashboardMetrics();
+  if (localBulkMetrics) {
+    metricsCache = {
+      data: localBulkMetrics.data,
+      timestamp: Date.now()
+    };
+    return res.json({
+      dataSource: localBulkMetrics.dataSource || 'local-bulk-dashboard',
+      data: localBulkMetrics.data,
+      generatedAt: localBulkMetrics.generatedAt,
+      phiStatus: localBulkMetrics.phiStatus
+    });
+  }
+
   // Return cached de-identified metrics if fresh
   if (!forceRefresh && metricsCache.data && metricsCache.timestamp) {
     const age = Date.now() - metricsCache.timestamp;
@@ -291,32 +324,28 @@ app.get('/api/dashboard-data', async (req, res) => {
     let rawData;
     let source;
 
-    if (hasBulkCreds && process.env.FHIR_JWKS_TOKEN_URL) {
+    if (hasBulkCreds && process.env.FHIR_TOKEN_URL) {
       try {
         // Use the full bulk export pipeline
         console.log('\n--- Bulk Export Pipeline ---');
         const accessToken = await getBulkToken();
         const groupId = process.env.FHIR_GROUP_ID;
-        const { jobId } = await startBulkExport(accessToken);
+        const exportResult = await startBulkExport(accessToken);
 
-        if (!jobId) throw new Error('No job ID from export');
-
-        const exportResult = await pollExportStatus(accessToken, groupId, jobId);
-
-        let batchId = exportResult.batchId || exportResult.batch;
-        if (!batchId && exportResult.output?.[0]?.url) {
-          const match = exportResult.output[0].url.match(/fhir-resource\/([^\/]+)\//);
-          batchId = match ? match[1] : null;
+        let exportManifest;
+        if (exportResult.mode === 'async') {
+          if (!exportResult.jobId) throw new Error('No job ID from async export');
+          exportManifest = await pollExportStatus(accessToken, groupId, exportResult.jobId, exportResult.contentLocation);
+        } else {
+          exportManifest = exportResult;
         }
-
-        if (!batchId) throw new Error('No batch ID from export result');
 
         const resourceTypes = [
           'Patient', 'Condition', 'Procedure', 'Encounter',
           'Observation', 'ServiceRequest', 'MedicationRequest',
           'Practitioner', 'Location', 'Coverage', 'DiagnosticReport'
         ];
-        rawData = await downloadBulkData(accessToken, batchId, resourceTypes);
+        rawData = await downloadBulkData(accessToken, exportManifest, resourceTypes);
         source = 'bulk-export';
       } catch (bulkErr) {
         console.log('Bulk export failed:', bulkErr.message);
@@ -398,6 +427,46 @@ async function fetchAllFHIRData(accessToken) {
 
 let bulkTokenStore = { accessToken: null, expiresAt: null };
 
+function getBulkOutputUrlsByType(exportResult) {
+  const outputByType = {};
+
+  for (const item of exportResult?.output || []) {
+    if (!item?.type || !item?.url) continue;
+    if (!outputByType[item.type]) outputByType[item.type] = [];
+    outputByType[item.type].push(item.url);
+  }
+
+  return outputByType;
+}
+
+function parseBulkPayload(bodyText, contentType, expectedType) {
+  const text = bodyText.trim();
+  if (!text) return [];
+
+  if ((contentType || '').toLowerCase().includes('ndjson')) {
+    return text
+      .split(/\r?\n/)
+      .filter(line => line.trim())
+      .map(line => JSON.parse(line));
+  }
+
+  const parsed = JSON.parse(text);
+
+  if (parsed.resourceType === 'Bundle' && Array.isArray(parsed.entry)) {
+    return parsed.entry.map(entry => entry.resource).filter(Boolean);
+  }
+
+  if (Array.isArray(parsed)) {
+    return parsed;
+  }
+
+  if (parsed.resourceType === expectedType) {
+    return [parsed];
+  }
+
+  return [];
+}
+
 // Step 1: Create self-signed JWT (SMART Backend Services / private_key_jwt)
 function createSelfSignedJWT(tokenUrl) {
   const privateKey = fs.readFileSync(path.join(__dirname, 'private_key.pem'), 'utf8');
@@ -431,12 +500,6 @@ async function getBulkToken() {
 
   console.log('\n--- Bulk API: Authenticating (private_key_jwt) ---');
 
-  const tokenUrl = process.env.FHIR_JWKS_TOKEN_URL;
-  console.log('  Token URL:', tokenUrl);
-
-  const jwtToken = createSelfSignedJWT(tokenUrl);
-  console.log('  Self-signed JWT created (RS384, kid=wce-dashboard-bulk-1).');
-
   // SMART Backend Services: POST to /v1/oauth2/token with client_assertion
   // Requires JWKS URL to be registered with AdvancedMD for this client_id.
   // Contact AdvancedMD InterOps: https://www.advancedmd.com/support/interoperability/
@@ -445,7 +508,10 @@ async function getBulkToken() {
 
   console.log(`  Token endpoint: ${stdTokenUrl}`);
   console.log(`  JWKS URL: ${process.env.FHIR_JWKS_PUBLIC_URL}`);
+  console.log('  Self-signed JWT created (RS384, kid=wce-dashboard-bulk-1).');
 
+  // AdvancedMD hybrid auth: JWT client_assertion + provider credentials
+  // (username/password/officekey) — NOT pure SMART Backend Services
   const response = await fetch(stdTokenUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -453,7 +519,10 @@ async function getBulkToken() {
       grant_type: 'client_credentials',
       scope: 'system/*.read',
       client_assertion_type: 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
-      client_assertion: jwtForStdEndpoint
+      client_assertion: jwtForStdEndpoint,
+      username: process.env.FHIR_PROVIDER_USERNAME || '',
+      password: process.env.FHIR_PROVIDER_PASSWORD || '',
+      officekey: process.env.FHIR_PROVIDER_OFFICEKEY || ''
     })
   });
 
@@ -485,9 +554,19 @@ async function getBulkToken() {
 }
 
 // Step 3: Kick off bulk export
+// IMPORTANT: Bulk export kickoff uses root-level URL, NOT org-specific.
+// Using org-specific URL (e.g., /v1/r4/47286/Group/...) incorrectly returns
+// HTTP 200 with an empty FHIR searchset Bundle instead of starting a bulk job.
+// The correct root-level URL: GET /v1/r4/Group/{groupId}/$export
+//
+// AdvancedMD returns:
+//   - 202 (async): standard FHIR Bulk, Content-Location header has status URL
+//   - 200 (sync): fallback/diagnostic — may indicate wrong URL or empty group
 async function startBulkExport(accessToken) {
   const groupId = process.env.FHIR_GROUP_ID;
-  const exportUrl = `${FHIR_BASE_URL_WITH_ORG}/Group/${groupId}/$export`;
+
+  // Root-level bulk export URL (no org segment)
+  const exportUrl = `https://providerapi.advancedmd.com/v1/r4/Group/${groupId}/$export`;
 
   console.log('  Step 3: Starting bulk export...');
   console.log(`    URL: ${exportUrl}`);
@@ -503,20 +582,37 @@ async function startBulkExport(accessToken) {
   });
 
   if (response.status === 202) {
+    // Standard async bulk export
     const contentLocation = response.headers.get('content-location');
-    // Extract jobId from the response or URL
     const body = await response.text();
     let jobId;
     try {
       const parsed = JSON.parse(body);
       jobId = parsed.jobId || parsed.job_id;
     } catch (e) {
-      // jobId might be in the content-location URL
       const match = contentLocation?.match(/jobId=([^&]+)/) || contentLocation?.match(/\/([^\/]+)$/);
       jobId = match ? match[1] : null;
     }
-    console.log(`    Export started. Job ID: ${jobId || 'unknown'}`);
-    return { jobId, contentLocation };
+    console.log(`    Export started (async). Job ID: ${jobId || 'unknown'}`);
+    return { jobId, contentLocation, mode: 'async' };
+  }
+
+  if (response.status === 200) {
+    // DIAGNOSTIC: If we get 200 with a Bundle, this may indicate:
+    //   1. Wrong URL pattern (org-specific instead of root-level)
+    //   2. Empty group returning a searchset Bundle
+    //   3. AdvancedMD sync fallback mode
+    // The correct root-level $export should return 202 for async processing.
+    const body = await response.json();
+    const dataServiceLinks = (body.link || [])
+      .filter(l => l.relation === 'search' || l.relation === 'first')
+      .map(l => l.url);
+    console.log(`    WARNING: Got 200 instead of 202 (total: ${body.total || 0})`);
+    console.log(`    This may indicate wrong URL pattern or empty group.`);
+    if (dataServiceLinks.length) {
+      console.log(`    Data service URL: ${dataServiceLinks[0]}`);
+    }
+    return { bundle: body, dataServiceLinks, mode: 'sync' };
   }
 
   const err = await response.text();
@@ -524,24 +620,46 @@ async function startBulkExport(accessToken) {
 }
 
 // Step 4: Poll for export completion
-async function pollExportStatus(accessToken, groupId, jobId) {
-  const statusUrl = process.env.FHIR_BULK_STATUS_URL;
+// AdvancedMD status URL: https://providerapi.advancedmd.com/v1/fhir-bulk/status?groupId={groupId}&jobId={jobId}
+// Returns 202 while in progress, 200 when complete with batchId/batchNumber for downloads.
+async function pollExportStatus(accessToken, groupId, jobId, contentLocation = null) {
+  const officeKey = process.env.FHIR_PROVIDER_OFFICEKEY;
   console.log('  Step 4: Polling export status...');
+
+  // Use Content-Location if it's a full URL, otherwise build from env
+  let statusBaseUrl;
+  if (contentLocation && contentLocation.startsWith('http')) {
+    statusBaseUrl = contentLocation;
+  } else {
+    const baseStatusUrl = process.env.FHIR_BULK_STATUS_URL || 'https://providerapi.advancedmd.com/v1/fhir-bulk/status';
+    statusBaseUrl = `${baseStatusUrl}?groupId=${groupId}&jobId=${jobId}`;
+  }
+
+  console.log(`    Status URL: ${statusBaseUrl}`);
 
   const maxPolls = 60; // Max 5 minutes at 5s intervals
   for (let i = 0; i < maxPolls; i++) {
-    const response = await fetch(`${statusUrl}?groupId=${groupId}&jobId=${jobId}`, {
-      headers: { 'Authorization': `Bearer ${accessToken}` }
-    });
+    const headers = { 'Authorization': `Bearer ${accessToken}` };
+    if (officeKey) headers['OfficeKey'] = officeKey;
+
+    const response = await fetch(statusBaseUrl, { headers });
 
     if (response.status === 200) {
       const result = await response.json();
-      console.log(`    Export complete!`);
+      const batchId = result.batchId || result.batch || result.batchNumber;
+      console.log(`    Export complete! Batch ID: ${batchId || 'unknown'}`);
       return result;
     }
 
     if (response.status === 202) {
-      const progress = response.headers.get('x-progress') || 'In progress';
+      const bodyText = await response.text();
+      let progress = 'In progress';
+      try {
+        const parsed = JSON.parse(bodyText);
+        progress = parsed.status || parsed.message || progress;
+      } catch (e) {
+        progress = response.headers.get('x-progress') || progress;
+      }
       console.log(`    ${progress}... (poll ${i + 1})`);
       await new Promise(resolve => setTimeout(resolve, 5000));
       continue;
@@ -554,10 +672,18 @@ async function pollExportStatus(accessToken, groupId, jobId) {
   throw new Error('Export timed out after 5 minutes');
 }
 
-// Step 5: Download resource data from batch
-async function downloadBulkData(accessToken, batchId, resourceTypes) {
-  const baseUrl = process.env.FHIR_BULK_RESOURCE_URL;
-  console.log(`  Step 5: Downloading resources from batch ${batchId}...`);
+// Step 5: Download resource data from manifest URLs or AdvancedMD bulk resource endpoint
+// AdvancedMD documented bulk resource download path:
+//   GET /v1/fhir-bulk/fhir-resource/{batchId}/{fhirEntity}
+// The batchId comes from the completed status poll response.
+async function downloadBulkData(accessToken, exportResult, resourceTypes) {
+  const outputByType = getBulkOutputUrlsByType(exportResult);
+  const batchId = exportResult?.batchId || exportResult?.batch || exportResult?.batchNumber || null;
+  const dataServiceLinks = exportResult?.dataServiceLinks || [];
+  const officeKey = process.env.FHIR_PROVIDER_OFFICEKEY;
+
+  console.log(`  Step 5: Downloading resources...`);
+  if (batchId) console.log(`    Batch ID: ${batchId}`);
 
   const rawData = {
     patients: [], conditions: [], procedures: [], encounters: [],
@@ -565,40 +691,63 @@ async function downloadBulkData(accessToken, batchId, resourceTypes) {
     practitioners: [], locations: [], coverages: [], diagnosticReports: []
   };
 
+  // Build download URLs per resource type
+  const typeUrls = {};
   for (const type of resourceTypes) {
-    try {
-      const response = await fetch(`${baseUrl}/${batchId}/${type}`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Accept': 'application/fhir+json'
-        }
+    if (outputByType[type]?.length) {
+      // Standard FHIR bulk manifest URLs (from output array)
+      typeUrls[type] = outputByType[type];
+    } else if (batchId) {
+      // AdvancedMD documented path: /v1/fhir-bulk/fhir-resource/{batchId}/{fhirEntity}
+      typeUrls[type] = [`https://providerapi.advancedmd.com/v1/fhir-bulk/fhir-resource/${batchId}/${type}`];
+    } else if (dataServiceLinks.length) {
+      // Fallback: data-service links with _type parameter
+      typeUrls[type] = dataServiceLinks.map(link => {
+        const sep = link.includes('?') ? '&' : '?';
+        return `${link}${sep}_type=${type}`;
       });
+    }
+  }
 
-      if (!response.ok) {
-        console.log(`    ${type}: ${response.status} (skipped)`);
-        continue;
-      }
+  for (const type of resourceTypes) {
+    const urls = typeUrls[type] || [];
 
-      const data = await response.json();
+    if (!urls.length) {
+      console.log(`    ${type}: no download URL available`);
+      continue;
+    }
 
-      // Could be a Bundle or NDJSON — handle both
-      let resources = [];
-      if (data.resourceType === 'Bundle' && data.entry) {
-        resources = data.entry.map(e => e.resource).filter(Boolean);
-      } else if (Array.isArray(data)) {
-        resources = data;
-      } else if (data.resourceType === type) {
-        resources = [data];
-      } else if (typeof data === 'string') {
-        // NDJSON
-        resources = data.split('\n').filter(l => l.trim()).map(l => JSON.parse(l));
-      }
-
+    try {
       const key = type.charAt(0).toLowerCase() + type.slice(1) + 's';
-      if (rawData[key]) {
-        rawData[key].push(...resources);
+      let totalForType = 0;
+
+      for (const url of urls) {
+        const headers = {
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/fhir+ndjson, application/fhir+json, application/json'
+        };
+        // AdvancedMD bulk endpoints require OfficeKey header
+        if (officeKey) headers['OfficeKey'] = officeKey;
+
+        const response = await fetch(url, { headers });
+
+        if (!response.ok) {
+          console.log(`    ${type}: ${response.status} from ${url} (skipped)`);
+          continue;
+        }
+
+        const contentType = response.headers.get('content-type') || '';
+        const bodyText = await response.text();
+        const resources = parseBulkPayload(bodyText, contentType, type);
+
+        if (rawData[key]) {
+          rawData[key].push(...resources);
+        }
+
+        totalForType += resources.length;
       }
-      console.log(`    ${type}: ${resources.length} resources`);
+
+      console.log(`    ${type}: ${totalForType} resources`);
 
       // Small pause between downloads
       await new Promise(resolve => setTimeout(resolve, 300));
@@ -623,37 +772,19 @@ app.get('/api/bulk-pull', async (req, res) => {
 
     // Step 3: Kick off export
     const groupId = process.env.FHIR_GROUP_ID;
-    const { jobId } = await startBulkExport(accessToken);
+    const exportResult = await startBulkExport(accessToken);
 
-    if (!jobId) {
-      throw new Error('No job ID returned from export kickoff');
-    }
+    let exportManifest;
 
-    // Step 4: Poll until complete
-    const exportResult = await pollExportStatus(accessToken, groupId, jobId);
-
-    // Extract batch ID from the result
-    let batchId;
-    if (exportResult.output) {
-      // Standard FHIR bulk export format
-      const firstUrl = exportResult.output[0]?.url || '';
-      const match = firstUrl.match(/fhir-resource\/([^\/]+)\//);
-      batchId = match ? match[1] : null;
-    }
-    if (!batchId && exportResult.batchId) {
-      batchId = exportResult.batchId;
-    }
-    if (!batchId && exportResult.batch) {
-      batchId = exportResult.batch;
-    }
-
-    console.log(`  Batch ID: ${batchId}`);
-
-    if (!batchId) {
-      // Try to use the output URLs directly
-      console.log('  No batch ID found, trying output URLs directly...');
-      console.log('  Export result:', JSON.stringify(exportResult).substring(0, 500));
-      throw new Error('Could not determine batch ID from export result');
+    if (exportResult.mode === 'async') {
+      // Standard async flow: poll for completion
+      if (!exportResult.jobId) {
+        throw new Error('No job ID returned from async export kickoff');
+      }
+      exportManifest = await pollExportStatus(accessToken, groupId, exportResult.jobId, exportResult.contentLocation);
+    } else {
+      // AdvancedMD sync flow: use data-service links directly
+      exportManifest = exportResult;
     }
 
     // Step 5: Download all resource types
@@ -662,7 +793,7 @@ app.get('/api/bulk-pull', async (req, res) => {
       'Observation', 'ServiceRequest', 'MedicationRequest',
       'Practitioner', 'Location', 'Coverage', 'DiagnosticReport'
     ];
-    const rawData = await downloadBulkData(accessToken, batchId, resourceTypes);
+    const rawData = await downloadBulkData(accessToken, exportManifest, resourceTypes);
 
     // Step 6: Transform → deidentify → cache
     console.log('  Step 6: Transforming and de-identifying...');

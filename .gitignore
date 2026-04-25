@@ -2,6 +2,8 @@ node_modules/
 .env
 .DS_Store
 data/*.json
+data/bulk-profile*.md
 !data/.gitkeep
 private_key.pem
 *.pem
+private-fhir-downloads/

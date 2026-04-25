@@ -103,7 +103,8 @@ function stripProviderPHI(provider) {
     referralsPerWound: provider.referralsPerWound || 0,
 
     // Aggregate insight metrics (no PHI — just counts)
-    unresolvedWounds: provider.unresolvedWounds || 0
+    unresolvedWounds: provider.unresolvedWounds || 0,
+    providerInsights: provider.providerInsights || {}
   };
 }
 

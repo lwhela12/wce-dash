@@ -5,7 +5,14 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "bulk:smoke": "node scripts/bulk-smoke-test.js",
+    "bulk:smoke:full": "node scripts/bulk-smoke-test.js --full",
+    "bulk:profile": "node scripts/profile-bulk-structure.js",
+    "bulk:dashboard": "node scripts/build-bulk-dashboard-metrics.js",
+    "bulk:text-samples": "node scripts/sample-bulk-text-fields.js",
+    "bulk:narrative-signals": "node scripts/analyze-bulk-narrative-signals.js",
+    "bulk:deidentify-working-set": "node scripts/deidentify-bulk-working-set.js"
   },
   "dependencies": {
     "express": "^4.21.0",
