@@ -1,0 +1,1873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WCE · AdvancedMD Connect · The Healing Dossier</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..900,0..100;1,9..144,300..900,0..100&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Ink — deep navy from the WCE wordmark */
+    --ink:           #1a1f3a;
+    --ink-soft:      #2e3556;
+    --ink-quiet:     #5a6285;
+    --ink-whisper:   #8a91ad;
+
+    /* Paper — warm ivory like a bound dossier */
+    --paper:         #f5efe2;
+    --paper-warm:    #f9f4e8;
+    --paper-deep:    #ede5d0;
+    --paper-shade:   #e4dac1;
+
+    /* Gold — the arc above WCE, the rule beneath "Specialty" */
+    --gold:          #c89943;
+    --gold-bright:   #e0b14e;
+    --gold-deep:     #8a6a24;
+    --gold-leaf:     #d9b86b;
+    --gold-wash:     rgba(200, 153, 67, 0.16);
+
+    /* Supporting */
+    --blue-steel:    #4d6a9a;   /* "Wound Care Experts" */
+    --vital:         #8b3a3a;   /* surgical red */
+    --healing:       #4a7a5e;   /* sage */
+    --plum:          #5b3d6e;
+    --teal-ink:      #2c5d63;
+
+    /* Structural */
+    --rule:          rgba(26, 31, 58, 0.14);
+    --rule-soft:     rgba(26, 31, 58, 0.07);
+    --rule-gold:     rgba(200, 153, 67, 0.35);
+
+    --serif: "Fraunces", "Cormorant Garamond", "Georgia", serif;
+    --sans:  "Instrument Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --serif-italic: "Instrument Serif", "Fraunces", "Garamond", serif;
+    --mono:  "JetBrains Mono", "SF Mono", ui-monospace, Menlo, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { margin: 0; padding: 0; }
+
+  body {
+    color: var(--ink);
+    background: var(--paper);
+    font-family: var(--sans);
+    font-feature-settings: "ss01", "cv11", "cv02";
+    letter-spacing: -0.005em;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* Paper grain — a faint tooth so it doesn't read as flat screen */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    background-image:
+      radial-gradient(circle at 18% 8%, rgba(200, 153, 67, 0.10), transparent 42%),
+      radial-gradient(circle at 92% 88%, rgba(77, 106, 154, 0.06), transparent 50%),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.30  0 0 0 0 0.22  0 0 0 0 0.05  0 0 0 0.06 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    mix-blend-mode: multiply;
+    opacity: 0.55;
+  }
+
+  /* ============ MASTHEAD ============ */
+
+  .masthead {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background:
+      linear-gradient(to bottom, var(--paper-warm) 0%, var(--paper-warm) 78%, rgba(245, 239, 226, 0.92) 100%);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .masthead::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: -1px;
+    height: 1px;
+    background: linear-gradient(90deg,
+      transparent 0%,
+      var(--gold-leaf) 12%,
+      var(--gold) 50%,
+      var(--gold-leaf) 88%,
+      transparent 100%);
+    opacity: 0.55;
+  }
+
+  .masthead-inner {
+    width: min(1480px, 100%);
+    margin: 0 auto;
+    padding: 12px 36px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    position: relative;
+    min-height: 64px;
+  }
+
+  .mark {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+  }
+
+  .mark img {
+    width: 56px;
+    height: 36px;
+    object-fit: contain;
+    flex: 0 0 auto;
+  }
+
+  .mark .seal {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    line-height: 1;
+    min-width: 0;
+  }
+
+  .seal-kicker {
+    font-family: var(--sans);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.26em;
+    color: var(--gold-deep);
+    text-transform: uppercase;
+  }
+
+  .seal-title {
+    font-family: var(--serif);
+    font-variation-settings: "opsz" 36, "wght" 520;
+    font-size: 19px;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+    line-height: 1.1;
+  }
+
+  .seal-title em {
+    font-family: var(--serif-italic);
+    font-style: italic;
+    color: var(--gold-deep);
+    font-weight: 400;
+    font-size: 0.94em;
+  }
+
+  .meta-stack {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 6px 11px 6px 9px;
+    border: 1px solid var(--rule);
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    white-space: nowrap;
+  }
+
+  .pill .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--healing);
+    box-shadow: 0 0 0 3px rgba(74, 122, 94, 0.16);
+    animation: heartbeat 2.6s ease-in-out infinite;
+  }
+
+  @keyframes heartbeat {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 0 3px rgba(74, 122, 94, 0.16); }
+    14%      { transform: scale(1.25); box-shadow: 0 0 0 5px rgba(74, 122, 94, 0.06); }
+    28%      { transform: scale(1); }
+    42%      { transform: scale(1.15); }
+    56%      { transform: scale(1); }
+  }
+
+  .reload-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 14px 9px 12px;
+    border: 1px solid var(--ink);
+    background: var(--ink);
+    color: var(--paper-warm);
+    border-radius: 999px;
+    font-family: var(--sans);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 200ms ease, transform 200ms ease, box-shadow 250ms ease;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.05);
+  }
+
+  .reload-btn:hover {
+    background: var(--ink-soft);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(26, 31, 58, 0.22);
+  }
+
+  .reload-btn svg {
+    width: 13px;
+    height: 13px;
+    stroke-width: 1.6;
+    transition: transform 600ms cubic-bezier(0.4, 0.0, 0.2, 1);
+  }
+
+  .reload-btn:hover svg { transform: rotate(180deg); }
+  .reload-btn.spinning svg { animation: spin 1.1s cubic-bezier(0.5, 0, 0.5, 1); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ============ NAVIGATION ============ */
+
+  .compass {
+    width: min(1480px, 100%);
+    margin: 0 auto;
+    padding: 20px 44px 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+    position: relative;
+    z-index: 5;
+  }
+
+  .compass-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0;
+    border: none;
+    background: transparent;
+  }
+
+  .chapter {
+    display: inline-flex;
+    align-items: center;
+    padding: 9px 13px;
+    border: 0;
+    background: transparent;
+    color: var(--ink-quiet);
+    font-family: var(--sans);
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    position: relative;
+    transition: color 240ms ease;
+  }
+
+  .chapter::after {
+    content: "";
+    position: absolute;
+    left: 13px;
+    right: 13px;
+    bottom: 0;
+    height: 1.5px;
+    background: var(--ink);
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 360ms cubic-bezier(0.5, 0, 0.1, 1);
+  }
+
+  .chapter:hover { color: var(--ink); }
+  .chapter:hover::after { transform: scaleX(0.35); }
+
+  .chapter.active { color: var(--ink); }
+  .chapter.active::after {
+    transform: scaleX(1);
+    background: linear-gradient(90deg, var(--gold-deep), var(--gold), var(--gold-deep));
+    height: 2px;
+  }
+
+  .compass-filter {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--ink-quiet);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  .compass-filter select {
+    appearance: none;
+    border: 1px solid var(--rule);
+    background: transparent;
+    color: var(--ink);
+    padding: 9px 32px 9px 14px;
+    font-family: var(--sans);
+    font-size: 12.5px;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+    text-transform: none;
+    border-radius: 999px;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10' fill='none' stroke='%231a1f3a' stroke-width='1.5'><path d='M2 3.5l3 3 3-3'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    transition: border-color 200ms ease;
+  }
+
+  .compass-filter select:hover { border-color: var(--ink); }
+
+  /* ============ MAIN STAGE ============ */
+
+  main {
+    width: min(1480px, 100%);
+    margin: 0 auto;
+    padding: 28px 44px 80px;
+    position: relative;
+    z-index: 2;
+  }
+
+  /* ============ SECTION SHELL ============ */
+
+  .section {
+    display: none;
+    animation: pageRise 600ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .section.active { display: block; }
+
+  @keyframes pageRise {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .chapter-head {
+    margin: 22px 0 20px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--rule);
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 18px;
+  }
+
+  .chapter-head-name {
+    font-family: var(--serif);
+    font-variation-settings: "opsz" 60, "wght" 460;
+    font-size: 22px;
+    line-height: 1.1;
+    letter-spacing: -0.012em;
+    color: var(--ink);
+  }
+
+  .chapter-head-aside {
+    font-family: var(--serif-italic);
+    font-style: italic;
+    font-size: 12.5px;
+    color: var(--ink-quiet);
+  }
+
+  /* ============ PROOF STRIP — quartet of validating facts ============ */
+
+  .proof-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0;
+    margin-bottom: 32px;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0));
+  }
+
+  .proof-item {
+    --accent: var(--gold);
+    position: relative;
+    padding: 22px 24px 24px;
+    border-right: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 132px;
+    animation: pageRise 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .proof-item:nth-child(1) { animation-delay: 60ms; }
+  .proof-item:nth-child(2) { animation-delay: 130ms; }
+  .proof-item:nth-child(3) { animation-delay: 200ms; }
+  .proof-item:nth-child(4) { animation-delay: 270ms; }
+
+  .proof-item:last-child { border-right: 0; }
+
+  .proof-item::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 28px;
+    height: 2px;
+    background: var(--accent);
+  }
+
+  .proof-label {
+    font-family: var(--sans);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    color: var(--ink-quiet);
+  }
+
+  .proof-value {
+    font-family: var(--serif);
+    font-variation-settings: "opsz" 144, "wght" 380;
+    font-size: 32px;
+    line-height: 1;
+    color: var(--ink);
+    letter-spacing: -0.022em;
+  }
+
+  .proof-value em {
+    font-family: var(--serif-italic);
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .proof-detail {
+    font-size: 12.5px;
+    color: var(--ink-quiet);
+    line-height: 1.45;
+    margin-top: auto;
+  }
+
+  /* ============ KPI MOSAIC ============ */
+
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0;
+    margin: 0 0 36px;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .kpi {
+    --accent: var(--ink);
+    position: relative;
+    padding: 24px 22px 26px;
+    border-right: 1px solid var(--rule);
+    overflow: hidden;
+    background: transparent;
+    transition: background 360ms ease;
+    animation: pageRise 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .kpi:nth-child(1) { animation-delay: 60ms; }
+  .kpi:nth-child(2) { animation-delay: 130ms; }
+  .kpi:nth-child(3) { animation-delay: 200ms; }
+  .kpi:nth-child(4) { animation-delay: 270ms; }
+  .kpi:nth-child(5) { animation-delay: 340ms; }
+  .kpi:nth-child(6) { animation-delay: 410ms; }
+
+  .kpi:last-child { border-right: 0; }
+
+  .kpi::before {
+    content: "";
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 2px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 500ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .kpi:hover { background: rgba(255, 255, 255, 0.4); }
+  .kpi:hover::before { transform: scaleX(1); }
+
+  .kpi-label {
+    font-family: var(--sans);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--ink-quiet);
+    margin-bottom: 16px;
+  }
+
+  .kpi-value {
+    font-family: var(--serif);
+    font-variation-settings: "opsz" 144, "wght" 360;
+    font-size: 54px;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    color: var(--accent);
+    font-feature-settings: "tnum", "ss01";
+    margin-bottom: 14px;
+  }
+
+  .kpi-note {
+    font-family: var(--serif-italic);
+    font-style: italic;
+    font-size: 12.5px;
+    color: var(--ink-quiet);
+    line-height: 1.4;
+  }
+
+  /* ============ PANELS ============ */
+
+  .grid { display: grid; gap: 24px; }
+
+  .content-grid {
+    grid-template-columns: minmax(0, 1.55fr) minmax(340px, 0.85fr);
+    align-items: start;
+  }
+
+  .three-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .panel {
+    position: relative;
+    background: var(--paper-warm);
+    border: 1px solid var(--rule);
+    padding: 26px 28px 28px;
+    min-width: 0;
+    transition: border-color 280ms ease;
+  }
+
+  .panel::before {
+    content: "";
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    width: 38px;
+    height: 1px;
+    background: var(--gold);
+  }
+
+  .panel::after {
+    content: "";
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    width: 1px;
+    height: 38px;
+    background: var(--gold);
+  }
+
+  .panel:hover { border-color: rgba(26, 31, 58, 0.22); }
+
+  .panel-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 18px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .panel-title {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .panel h2 {
+    margin: 0;
+    font-family: var(--serif);
+    font-variation-settings: "opsz" 36, "wght" 480;
+    font-size: 21px;
+    line-height: 1.15;
+    color: var(--ink);
+    letter-spacing: -0.012em;
+  }
+
+  .panel h2 em {
+    font-family: var(--serif-italic);
+    font-style: italic;
+    color: var(--gold-deep);
+    font-size: 0.86em;
+  }
+
+  .panel-subtitle {
+    font-family: var(--serif-italic);
+    font-style: italic;
+    color: var(--ink-quiet);
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .tag {
+    flex: 0 0 auto;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    padding: 5px 11px;
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    color: var(--gold-deep);
+    background: var(--gold-wash);
+    text-transform: uppercase;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  /* ============ TABLES ============ */
+
+  .table-scroll {
+    overflow-x: auto;
+    width: 100%;
+    min-width: 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--gold-leaf) transparent;
+  }
+
+  .table-scroll::-webkit-scrollbar { height: 8px; }
+  .table-scroll::-webkit-scrollbar-track { background: transparent; }
+  .table-scroll::-webkit-scrollbar-thumb {
+    background: var(--gold-leaf);
+    border-radius: 999px;
+    border: 2px solid var(--paper-warm);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  th {
+    padding: 12px 10px 10px;
+    border-bottom: 1px solid var(--ink);
+    color: var(--ink-quiet);
+    font-family: var(--sans);
+    font-size: 9.5px;
+    font-weight: 600;
+    text-align: right;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    white-space: nowrap;
+  }
+
+  th:first-child, td:first-child { text-align: left; }
+
+  td {
+    padding: 16px 10px;
+    border-bottom: 1px solid var(--rule-soft);
+    text-align: right;
+    vertical-align: middle;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  td:first-child {
+    font-family: var(--sans);
+    font-size: 13px;
+  }
+
+  tbody tr {
+    transition: background 200ms ease;
+  }
+
+  tbody tr:hover { background: rgba(200, 153, 67, 0.06); }
+
+  tr:last-child td { border-bottom: 0; }
+
+  .provider-cell {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 220px;
+  }
+
+  .avatar {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    color: var(--paper-warm);
+    background: var(--provider-color, var(--ink));
+    font-family: var(--serif);
+    font-variation-settings: "opsz" 18, "wght" 500;
+    font-size: 13px;
+    flex: 0 0 auto;
+    letter-spacing: 0.02em;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.18), 0 1px 0 rgba(26,31,58,0.1);
+    position: relative;
+  }
+
+  .avatar::after {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    border: 1px solid var(--rule);
+  }
+
+  .provider-name {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 13px;
+    line-height: 1.2;
+    color: var(--ink);
+    letter-spacing: 0;
+  }
+
+  .provider-meta {
+    margin-top: 3px;
+    font-family: var(--serif-italic);
+    font-style: italic;
+    color: var(--ink-quiet);
+    font-size: 12px;
+  }
+
+  /* ============ BARS ============ */
+
+  .bar-list { display: grid; gap: 16px; }
+
+  .bar-row {
+    display: grid;
+    grid-template-columns: minmax(140px, 200px) 1fr 56px;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .bar-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink);
+    line-height: 1.25;
+  }
+
+  .bar-label .metric-detail {
+    display: block;
+    margin-top: 3px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--ink-quiet);
+  }
+
+  .bar-track {
+    position: relative;
+    height: 10px;
+    border-radius: 2px;
+    background: rgba(26, 31, 58, 0.08);
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    min-width: 3px;
+    background: var(--bar-color, var(--ink));
+    border-radius: 2px;
+    transition: width 900ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .bar-value {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ============ SPLIT / METRIC LISTS ============ */
+
+  .split {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 26px;
+  }
+
+  .split h3 {
+    margin: 0 0 14px;
+    font-family: var(--sans);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--ink-quiet);
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+  }
+
+  .metric-list { display: grid; gap: 0; }
+
+  .metric-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 52px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+
+  .metric-row:last-child { border-bottom: 0; }
+
+  .metric-name {
+    min-width: 0;
+    color: var(--ink);
+    font-weight: 500;
+    font-size: 13px;
+    line-height: 1.3;
+  }
+
+  .metric-detail {
+    display: block;
+    margin-top: 3px;
+    font-family: var(--serif-italic);
+    font-style: italic;
+    color: var(--ink-quiet);
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: 0;
+  }
+
+  .metric-value {
+    font-family: var(--mono);
+    font-weight: 600;
+    color: var(--ink);
+    white-space: nowrap;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ============ CODE TILES ============ */
+
+  .code-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+  }
+
+  .code-tile {
+    padding: 14px 12px;
+    min-height: 84px;
+    background: var(--paper-warm);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: background 260ms ease;
+  }
+
+  .code-tile:hover { background: var(--paper-deep); }
+
+  .code {
+    font-family: var(--mono);
+    color: var(--ink-quiet);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+
+  .code-count {
+    font-family: var(--serif);
+    font-variation-settings: "opsz" 144, "wght" 380;
+    color: var(--ink);
+    font-size: 30px;
+    line-height: 1;
+    letter-spacing: -0.025em;
+    font-feature-settings: "tnum";
+  }
+
+  /* ============ LOCATION CHIPS ============ */
+
+  .locations {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .location-chip {
+    padding: 8px 14px;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.35);
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: border-color 220ms ease, background 220ms ease;
+  }
+
+  .location-chip:hover {
+    border-color: var(--gold);
+    background: var(--gold-wash);
+    color: var(--gold-deep);
+  }
+
+  /* ============ READINESS / INTERPRETATION CARDS ============ */
+
+  .readiness-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+  }
+
+  .readiness-card {
+    padding: 18px 20px 20px;
+    background: var(--paper-warm);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 110px;
+  }
+
+  .readiness-card strong {
+    display: block;
+    font-family: var(--sans);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    color: var(--gold-deep);
+  }
+
+  .readiness-card span {
+    color: var(--ink);
+    font-size: 13.5px;
+    line-height: 1.5;
+    font-family: var(--serif);
+    font-variation-settings: "opsz" 18, "wght" 380;
+    letter-spacing: -0.005em;
+  }
+
+  /* ============ EMPTY STATE ============ */
+
+  .empty {
+    padding: 24px;
+    border: 1px dashed var(--rule);
+    color: var(--ink-quiet);
+    background: rgba(255, 255, 255, 0.3);
+    font-family: var(--serif-italic);
+    font-style: italic;
+    font-size: 13.5px;
+    text-align: center;
+  }
+
+  /* ============ FOOTER COLOPHON ============ */
+
+  .colophon {
+    margin-top: 56px;
+    padding-top: 22px;
+    border-top: 1px solid var(--rule);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .colophon::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: -4px;
+    width: 7px;
+    height: 7px;
+    background: var(--gold);
+    transform: translateX(-50%) rotate(45deg);
+    border: 2px solid var(--paper);
+  }
+
+  .colophon-left {
+    font-family: var(--serif-italic);
+    font-style: italic;
+    color: var(--ink-quiet);
+    font-size: 12px;
+  }
+
+  .colophon-right {
+    font-family: var(--sans);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-quiet);
+  }
+
+  /* ============ DECORATIVE FLOURISH ============ */
+
+  .ornament {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin: 40px 0;
+    color: var(--gold);
+  }
+
+  .ornament::before,
+  .ornament::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--rule-gold), transparent);
+  }
+
+  .ornament-diamond {
+    width: 6px;
+    height: 6px;
+    background: var(--gold);
+    transform: rotate(45deg);
+  }
+
+  /* ============ RESPONSIVE ============ */
+
+  /* Large laptop — relax the 6-col KPI to 3 */
+  @media (max-width: 1340px) {
+    main, .masthead-inner, .compass { padding-left: 28px; padding-right: 28px; }
+    .kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .kpi { border-bottom: 1px solid var(--rule); }
+    .kpi:nth-child(3n) { border-right: 0; }
+    .kpi:nth-child(n+4) { border-bottom: 0; }
+    .kpi-value { font-size: 46px; }
+  }
+
+  /* Tablet / small laptop — collapse content rows and proof strip pairs */
+  @media (max-width: 1240px) {
+    .content-grid { grid-template-columns: 1fr; }
+    .proof-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .proof-item { border-bottom: 1px solid var(--rule); }
+    .proof-item:nth-child(2n) { border-right: 0; }
+    .proof-item:nth-child(n+3) { border-bottom: 0; }
+    .three-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .compass { flex-direction: column; align-items: flex-start; gap: 14px; }
+  }
+
+  /* Small tablet — 2-col KPI, 1-col panels */
+  @media (max-width: 820px) {
+    main, .masthead-inner, .compass { padding-left: 22px; padding-right: 22px; }
+    .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .kpi { border-right: 1px solid var(--rule); }
+    .kpi:nth-child(2n) { border-right: 0; }
+    .kpi:nth-child(n+5) { border-bottom: 0; }
+    .three-grid { grid-template-columns: 1fr; }
+    .kpi-value { font-size: 42px; }
+    .split { grid-template-columns: 1fr; gap: 22px; }
+  }
+
+  /* Phone */
+  @media (max-width: 600px) {
+    .masthead-inner {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 18px;
+      min-height: 0;
+    }
+    .meta-stack { width: 100%; justify-content: flex-start; }
+    main { padding: 20px 18px 56px; }
+    .compass { padding: 16px 18px 0; }
+    .kpi-grid { grid-template-columns: 1fr; }
+    .kpi { border-right: 0; border-bottom: 1px solid var(--rule); }
+    .kpi:last-child { border-bottom: 0; }
+    .proof-strip { grid-template-columns: 1fr; }
+    .proof-item { border-right: 0; border-bottom: 1px solid var(--rule); }
+    .proof-item:last-child { border-bottom: 0; }
+    .panel { padding: 20px 18px; }
+    .kpi-value { font-size: 44px; }
+    .chapter-head { flex-direction: column; align-items: flex-start; gap: 4px; }
+    .bar-row { grid-template-columns: 1fr; gap: 6px; }
+    table { min-width: 680px; }
+    .table-scroll { margin: 0 -18px; padding: 0 18px; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- ============ MASTHEAD ============ -->
+  <header class="masthead">
+    <div class="masthead-inner">
+      <div class="mark">
+        <img src="/WCE_Specialty_Logo_update_healing.jpeg.jpg" alt="Wound Care Experts">
+        <div class="seal">
+          <span class="seal-kicker">Wound Care Experts &middot; Specialty</span>
+          <span class="seal-title">AdvancedMD Connect <em>Dashboard</em></span>
+        </div>
+      </div>
+
+      <div class="meta-stack">
+        <span class="pill"><span class="dot"></span><span id="sourcePill">Loading Connect data</span></span>
+        <span class="pill" id="generatedPill">Updated --</span>
+        <button class="reload-btn" id="refreshBtn" type="button" aria-label="Refresh readback">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.2"/><path d="M3 12A9 9 0 0 1 18.5 5.8"/><path d="M3 4v5h5"/><path d="M21 20v-5h-5"/></svg>
+          Refresh
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ NAVIGATION ============ -->
+  <div class="compass">
+    <nav class="compass-nav" aria-label="Dashboard chapters">
+      <button class="chapter active" type="button" data-section="snapshot">Snapshot</button>
+      <button class="chapter" type="button" data-section="proof">Readback Proof</button>
+      <button class="chapter" type="button" data-section="providers">Providers</button>
+      <button class="chapter" type="button" data-section="codes">Codes &amp; Payers</button>
+      <button class="chapter" type="button" data-section="readiness">Data Shape</button>
+    </nav>
+    <div class="compass-filter">
+      <span>Lens</span>
+      <select id="providerFilter" aria-label="Provider filter">
+        <option value="all">All providers</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- ============ MAIN STAGE ============ -->
+  <main>
+
+    <div class="proof-strip" id="proofStrip"></div>
+
+    <!-- I — SNAPSHOT -->
+    <section class="section active" id="snapshot">
+      <div class="chapter-head">
+        <span class="chapter-head-name">Snapshot</span>
+        <span class="chapter-head-aside">Clinical census across the readback cohort</span>
+      </div>
+
+      <div class="kpi-grid" id="kpiGrid"></div>
+
+      <div class="grid content-grid">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <h2>Provider <em>workload</em></h2>
+              <span class="panel-subtitle">Visits, wound diagnoses, and charge-backed procedures attributed by Connect</span>
+            </div>
+            <span class="tag">Connect Normalized</span>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead id="providerTableHead"></thead>
+              <tbody id="providerTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <h2>Diagnosis <em>mix</em></h2>
+              <span class="panel-subtitle">ICD-10 codes observed in the seeded Connect records</span>
+            </div>
+            <span class="tag">ICD-10</span>
+          </div>
+          <div class="bar-list" id="diagnosisBars"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- II — READBACK PROOF -->
+    <section class="section" id="proof">
+      <div class="chapter-head">
+        <span class="chapter-head-name">Readback Proof</span>
+        <span class="chapter-head-aside">What AdvancedMD confirmed for this export</span>
+      </div>
+
+      <div class="grid content-grid">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <h2>Readback <em>coverage</em></h2>
+              <span class="panel-subtitle">Expected seed records compared with AdvancedMD-observed records</span>
+            </div>
+            <span class="tag">Validation</span>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Record Type</th>
+                  <th>Expected</th>
+                  <th>Observed</th>
+                  <th>Matched</th>
+                  <th>Missing</th>
+                </tr>
+              </thead>
+              <tbody id="proofCoverageBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <h2>AdvancedMD <em>calls</em></h2>
+              <span class="panel-subtitle">Read-only calls used to compose the current export</span>
+            </div>
+            <span class="tag">Observed</span>
+          </div>
+          <div class="metric-list" id="proofCallList"></div>
+        </div>
+      </div>
+
+      <div class="ornament" aria-hidden="true">
+        <span class="ornament-diamond"></span>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <h2>MVP <em>interpretation</em></h2>
+            <span class="panel-subtitle">What this readback proves and what remains gated</span>
+          </div>
+          <span class="tag">Demo Scope</span>
+        </div>
+        <div class="readiness-grid" id="proofInterpretationGrid"></div>
+      </div>
+    </section>
+
+    <!-- III — PROVIDERS -->
+    <section class="section" id="providers">
+      <div class="chapter-head">
+        <span class="chapter-head-name">Providers</span>
+        <span class="chapter-head-aside">Volume, attribution, and procedure signal</span>
+      </div>
+
+      <div class="grid three-grid" id="providerCards"></div>
+
+      <div class="grid content-grid" style="margin-top:24px">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <h2>Procedure <em>distribution</em></h2>
+              <span class="panel-subtitle">Debridement, E/M, and surgical CPT counts by provider</span>
+            </div>
+            <span class="tag">CPT Rollup</span>
+          </div>
+          <div class="bar-list" id="providerProcedureBars"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <h2>Provider <em>signals</em></h2>
+              <span class="panel-subtitle">Only non-empty fields from the current Connect export</span>
+            </div>
+            <span class="tag">Non-Zero</span>
+          </div>
+          <div class="metric-list" id="providerSignals"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- IV — CODES & PAYERS -->
+    <section class="section" id="codes">
+      <div class="chapter-head">
+        <span class="chapter-head-name">Codes &amp; Payers</span>
+        <span class="chapter-head-aside">Where charges meet carriers</span>
+      </div>
+
+      <div class="grid content-grid">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <h2>Procedure <em>codes</em></h2>
+              <span class="panel-subtitle">CPT and HCPCS activity represented in charges</span>
+            </div>
+            <span class="tag">Charge Detail</span>
+          </div>
+          <div class="split">
+            <div>
+              <h3>Debridement CPT</h3>
+              <div class="code-grid" id="debridementCodes"></div>
+            </div>
+            <div>
+              <h3>E/M CPT</h3>
+              <div class="code-grid" id="emCodes"></div>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <h2>Payer <em>mix</em></h2>
+              <span class="panel-subtitle">Insurance carriers from AdvancedMD demographic data</span>
+            </div>
+            <span class="tag">Carrier</span>
+          </div>
+          <div class="bar-list" id="payerBars"></div>
+        </div>
+      </div>
+
+      <div class="ornament" aria-hidden="true">
+        <span class="ornament-diamond"></span>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <h2>Facilities in the <em>discovery map</em></h2>
+            <span class="panel-subtitle">Location IDs available for filters and attribution</span>
+          </div>
+          <span class="tag">Facility</span>
+        </div>
+        <div class="locations" id="locationList"></div>
+      </div>
+    </section>
+
+    <!-- V — DATA SHAPE -->
+    <section class="section" id="readiness">
+      <div class="chapter-head">
+        <span class="chapter-head-name">Data Shape</span>
+        <span class="chapter-head-aside">What this payload contains, in plain language</span>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <h2>Current AdvancedMD <em>data shape</em></h2>
+            <span class="panel-subtitle">The dossier renders only fields present in this Connect payload</span>
+          </div>
+          <span class="tag" id="phiTag">Sandbox</span>
+        </div>
+        <div class="readiness-grid" id="readinessGrid"></div>
+      </div>
+    </section>
+
+    <!-- COLOPHON -->
+    <div class="colophon">
+      <span class="colophon-left" id="footerNote"></span>
+      <span class="colophon-right">Patient-level records stay out of the browser payload</span>
+    </div>
+  </main>
+
+<script>
+const state = {
+  payload: null,
+  dashboard: null,
+  selectedProvider: 'all'
+};
+
+/* A measured palette: deep navy ink, gold leaf, sage healing, steel blue, plum, surgical red */
+const colors = ['#1a1f3a', '#c89943', '#4a7a5e', '#4d6a9a', '#5b3d6e', '#8b3a3a', '#2c5d63'];
+
+const fmt = (value) => Number(value || 0).toLocaleString();
+const sumObject = (obj = {}) => Object.values(obj || {}).reduce((total, value) => total + Number(value || 0), 0);
+const nonZeroEntries = (obj = {}) => Object.entries(obj || {}).filter(([, value]) => Number(value || 0) > 0);
+const pct = (value, total) => total ? Math.round((Number(value || 0) / total) * 100) : 0;
+
+function getProof() {
+  return state.payload?.proof || {};
+}
+
+function totalProofCalls(proof = getProof()) {
+  return Object.values(proof.observedCalls || {}).reduce((total, value) => total + Number(value || 0), 0);
+}
+
+function isProofPassing(proof = getProof()) {
+  const missing = proof.counts?.missing || {};
+  const observed = proof.counts?.observed || {};
+  const expected = proof.counts?.expected || {};
+  const required = ['patients', 'visits', 'charges'];
+  return required.every((key) => Number(missing[key] || 0) === 0 && Number(observed[key] || 0) === Number(expected[key] || 0));
+}
+
+function actionLabel(action) {
+  const labels = {
+    lookups: 'Lookup tables',
+    lookuppatient: 'Patient lookup',
+    getdemographic: 'Demographics',
+    getdatevisits: 'Date-range visits',
+    getupdatedvisits: 'Updated visits',
+    getvisitsbyid: 'Visits by ID',
+    getchargedetaildataicd10: 'Charge detail (ICD-10)'
+  };
+  if (labels[action]) return labels[action];
+  return String(action || '')
+    .replace(/^get/, 'get ')
+    .replace(/^lookup/, 'lookup ')
+    .replace(/byid/i, 'by ID')
+    .replace(/icd10/i, 'ICD-10')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .trim();
+}
+
+function valueLabel(value) {
+  if (value === true) return 'Proven';
+  if (value === false) return 'Not proven';
+  return value;
+}
+
+function shortDate(value) {
+  if (!value) return '--';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
+}
+
+function providerTotalProcedures(provider) {
+  return sumObject(provider.debridementCPT) + sumObject(provider.emCodes) + sumObject(provider.compressionCodes);
+}
+
+function getProviders() {
+  const providers = state.dashboard?.providers || [];
+  if (state.selectedProvider === 'all') return providers;
+  return providers.filter((provider) => provider.id === state.selectedProvider);
+}
+
+function html(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[char]));
+}
+
+/* Re-map provider color so brand stays cohesive (deep navy/gold/sage/steel/plum) */
+const providerAccent = (idx) => colors[idx % colors.length];
+
+function formatProviderName(name) {
+  if (!name) return '';
+  /* "JONES,JOHNATHAN" -> "Johnathan Jones" */
+  if (name.includes(',')) {
+    const [last, first] = name.split(',').map((s) => s.trim());
+    const cap = (s) => s ? s.charAt(0) + s.slice(1).toLowerCase() : '';
+    return `${cap(first)} ${cap(last)}`;
+  }
+  return name;
+}
+
+function providerAvatar(provider, accentOverride) {
+  const color = accentOverride || provider.color || colors[0];
+  const display = formatProviderName(provider.name) || provider.id;
+  const initials = provider.initials || display.split(/\s+/).map((s) => s[0]).filter(Boolean).slice(0, 2).join('') || 'MD';
+  return `
+    <div class="provider-cell">
+      <span class="avatar" style="--provider-color:${html(color)}">${html(initials)}</span>
+      <span>
+        <span class="provider-name">${html(display)}</span>
+        <span class="provider-meta">${html(provider.specialty || 'Wound care')}</span>
+      </span>
+    </div>
+  `;
+}
+
+function renderKpis() {
+  const data = state.dashboard || {};
+  const summary = data.summary || {};
+  const providers = getProviders();
+  const activeWounds = providers.reduce((total, provider) => total + Number(provider.activeWounds || 0), 0);
+  const over16w = providers.reduce((total, provider) => total + Number(provider.ptsOver16w || 0), 0);
+  const procedures = providers.reduce((total, provider) => total + providerTotalProcedures(provider), 0);
+  const patientCount = state.selectedProvider === 'all'
+    ? summary.totalPatients
+    : providers.reduce((total, provider) => total + Number(provider.newPatients || 0), 0);
+  const encounterCount = state.selectedProvider === 'all'
+    ? summary.totalEncounters
+    : providers.reduce((total, provider) => total + Number(provider.newPatients || 0) + Number(provider.followupPatients || 0), 0);
+
+  const kpis = [
+    { label: 'Readback patients',  value: patientCount,                       note: state.selectedProvider === 'all' ? 'AdvancedMD-confirmed sandbox cohort' : 'Unique attributed patients', color: 'var(--ink)' },
+    { label: 'Visit records',      value: encounterCount,                     note: 'AdvancedMD visit activity',                                       color: 'var(--blue-steel)' },
+    { label: 'Charge lines',       value: procedures || summary.totalProcedures, note: 'CPT and HCPCS rollups',                                          color: 'var(--gold-deep)' },
+    { label: 'Active wound dx',    value: activeWounds || summary.totalConditions, note: 'ICD-10 wound diagnoses',                                     color: 'var(--healing)' },
+    { label: 'Patients > 16 wks',  value: over16w,                            note: 'Long-running wound diagnosis signal',                              color: 'var(--vital)' },
+    { label: 'Attending',          value: providers.length || summary.totalProviders, note: 'Provider profiles in attribution',                          color: 'var(--plum)' }
+  ];
+
+  document.getElementById('kpiGrid').innerHTML = kpis.map((item) => `
+    <div class="kpi" style="--accent:${item.color}">
+      <div class="kpi-label">${html(item.label)}</div>
+      <div class="kpi-value">${fmt(item.value)}</div>
+      <div class="kpi-note">${html(item.note)}</div>
+    </div>
+  `).join('');
+}
+
+function renderProviderTable() {
+  const providers = getProviders();
+  const optionalColumns = [
+    { key: 'unresolvedWounds', label: 'Unresolved' },
+    { key: 'z5189Count', label: 'Z51.89' },
+    { key: 'palliativePts', label: 'Palliative' }
+  ].filter((column) => providers.some((provider) => Number(provider[column.key] || 0) > 0));
+
+  document.getElementById('providerTableHead').innerHTML = `
+    <tr>
+      <th>Provider</th>
+      <th>Visits</th>
+      <th>Patients</th>
+      <th>Active Dx</th>
+      <th>&gt;16 wks</th>
+      <th>E/M</th>
+      <th>Debride</th>
+      ${optionalColumns.map((column) => `<th>${html(column.label)}</th>`).join('')}
+    </tr>
+  `;
+  document.getElementById('providerTableBody').innerHTML = providers.map((provider, idx) => {
+    const visits = Number(provider.newPatients || 0) + Number(provider.followupPatients || 0);
+    return `
+      <tr>
+        <td>${providerAvatar(provider, providerAccent(idx))}</td>
+        <td>${fmt(visits)}</td>
+        <td>${fmt(provider.newPatients)}</td>
+        <td>${fmt(provider.activeWounds)}</td>
+        <td>${fmt(provider.ptsOver16w)}</td>
+        <td>${fmt(sumObject(provider.emCodes))}</td>
+        <td>${fmt(sumObject(provider.debridementCPT))}</td>
+        ${optionalColumns.map((column) => `<td>${fmt(provider[column.key])}</td>`).join('')}
+      </tr>
+    `;
+  }).join('') || `<tr><td colspan="8"><div class="empty">No provider rows in this payload.</div></td></tr>`;
+}
+
+function renderBars(targetId, rows, options = {}) {
+  const max = Math.max(1, ...rows.map((row) => Number(row.value || 0)));
+  document.getElementById(targetId).innerHTML = rows.length ? rows.map((row, index) => {
+    const color = row.color || colors[index % colors.length];
+    const width = Math.max(2, pct(row.value, max));
+    return `
+      <div class="bar-row">
+        <div class="bar-label">
+          ${html(row.label)}
+          ${row.detail ? `<span class="metric-detail">${html(row.detail)}</span>` : ''}
+        </div>
+        <div class="bar-track"><div class="bar-fill" style="width:${width}%;--bar-color:${color}"></div></div>
+        <div class="bar-value">${fmt(row.value)}</div>
+      </div>
+    `;
+  }).join('') : `<div class="empty">${html(options.emptyText || 'No rows in this payload.')}</div>`;
+}
+
+function renderDiagnosisBars() {
+  const rows = (state.dashboard?.diagnoses || [])
+    .map((diag, index) => ({
+      label: diag.name || diag.code,
+      detail: diag.code,
+      value: diag.count,
+      color: providerAccent(index)
+    }));
+  renderBars('diagnosisBars', rows, { emptyText: 'No diagnosis records in this payload.' });
+}
+
+function renderProviderCards() {
+  const providers = getProviders();
+  document.getElementById('providerCards').innerHTML = providers.map((provider, idx) => {
+    const accent = providerAccent(idx);
+    const visits = Number(provider.newPatients || 0) + Number(provider.followupPatients || 0);
+    const em = sumObject(provider.emCodes);
+    const debridement = sumObject(provider.debridementCPT);
+    return `
+      <div class="panel">
+        <div class="panel-header">
+          ${providerAvatar(provider, accent)}
+          <span class="tag">${fmt(visits)} visits</span>
+        </div>
+        <div class="metric-list">
+          <div class="metric-row"><span class="metric-name">Unique patients</span><span class="metric-value">${fmt(provider.newPatients)}</span></div>
+          <div class="metric-row"><span class="metric-name">Active wound diagnoses</span><span class="metric-value">${fmt(provider.activeWounds)}</span></div>
+          <div class="metric-row"><span class="metric-name">Debridement CPTs</span><span class="metric-value">${fmt(debridement)}</span></div>
+          <div class="metric-row"><span class="metric-name">E/M CPTs</span><span class="metric-value">${fmt(em)}</span></div>
+          <div class="metric-row"><span class="metric-name">Patients &gt; 16 wks</span><span class="metric-value">${fmt(provider.ptsOver16w)}</span></div>
+        </div>
+      </div>
+    `;
+  }).join('') || '<div class="empty">No provider rows in this payload.</div>';
+}
+
+function renderProviderProcedureBars() {
+  const rows = getProviders().map((provider, idx) => ({
+    label: formatProviderName(provider.name) || provider.id,
+    detail: `${fmt(sumObject(provider.debridementCPT))} debridement &middot; ${fmt(sumObject(provider.emCodes))} E/M`,
+    value: providerTotalProcedures(provider),
+    color: providerAccent(idx)
+  }));
+  renderBars('providerProcedureBars', rows, { emptyText: 'No procedure counts in this provider selection.' });
+}
+
+function renderProviderSignals() {
+  const providers = getProviders();
+  const signals = [
+    { label: 'Unresolved wound queue',   value: providers.reduce((t, p) => t + Number(p.unresolvedWounds || 0), 0), detail: 'Derived from current provider rows' },
+    { label: 'Z51.89 diagnosis mentions', value: providers.reduce((t, p) => t + Number(p.z5189Count || 0), 0),        detail: 'Aftercare coding signal' },
+    { label: 'Palliative patients',      value: providers.reduce((t, p) => t + Number(p.palliativePts || 0), 0),     detail: 'Palliative coding signal' },
+    { label: 'MIST orders',              value: providers.reduce((t, p) => t + Number(p.mistOrders || 0), 0),        detail: 'Hidden when zero in provider table' }
+  ].filter((signal) => signal.value > 0);
+
+  document.getElementById('providerSignals').innerHTML = signals.length ? signals.map((signal) => `
+    <div class="metric-row">
+      <span class="metric-name">${html(signal.label)}<span class="metric-detail">${html(signal.detail)}</span></span>
+      <span class="metric-value">${fmt(signal.value)}</span>
+    </div>
+  `).join('') : '<div class="empty">No non-zero secondary signals in this provider selection.</div>';
+}
+
+function renderCodeTiles() {
+  const providers = getProviders();
+  const combine = (key) => {
+    const totals = {};
+    for (const provider of providers) {
+      for (const [code, count] of Object.entries(provider[key] || {})) {
+        totals[code] = (totals[code] || 0) + Number(count || 0);
+      }
+    }
+    return nonZeroEntries(totals).sort((a, b) => b[1] - a[1]);
+  };
+
+  const tileHtml = (entries) => entries.length ? entries.map(([code, count]) => `
+    <div class="code-tile">
+      <div class="code">${html(code)}</div>
+      <div class="code-count">${fmt(count)}</div>
+    </div>
+  `).join('') : '<div class="empty">No non-zero codes for this selection.</div>';
+
+  document.getElementById('debridementCodes').innerHTML = tileHtml(combine('debridementCPT'));
+  document.getElementById('emCodes').innerHTML = tileHtml(combine('emCodes'));
+}
+
+function renderPayersAndLocations() {
+  const payers = state.dashboard?.insurance || [];
+  renderBars('payerBars', payers.map((payer, index) => ({
+    label: payer.name,
+    value: payer.activePatients,
+    color: providerAccent(index)
+  })), { emptyText: 'No insurance records in this payload.' });
+
+  const locations = state.dashboard?.locations || [];
+  document.getElementById('locationList').innerHTML = locations.length
+    ? locations.map((location) => `<span class="location-chip" title="${html(location.name || location.id)}">${html(location.name || location.id)}</span>`).join('')
+    : '<div class="empty">No facility records in this payload.</div>';
+}
+
+function renderProofStrip() {
+  const proof = getProof();
+  const counts = proof.counts || {};
+  const observed = counts.observed || {};
+  const expected = counts.expected || {};
+  const missing = counts.missing || {};
+  const passing = proof.mode && isProofPassing(proof);
+  const status = passing ? 'Passed' : (proof.mode ? 'Review' : 'Missing');
+  const calls = totalProofCalls(proof);
+  const totalMissing = Object.values(missing).reduce((t, v) => t + Number(v || 0), 0);
+  const items = [
+    {
+      label: 'Readback gate',
+      value: status,
+      detail: proof.mode
+        ? (totalMissing === 0 ? 'Every requested record returned by AdvancedMD' : `${fmt(totalMissing)} missing records in proof counts`)
+        : 'No proof metadata in dashboard export',
+      color: passing ? 'var(--healing)' : (proof.mode ? 'var(--gold-deep)' : 'var(--vital)')
+    },
+    {
+      label: 'Patients · visits · charges',
+      value: `${fmt(observed.patients || 0)}<em>/</em>${fmt(observed.visits || 0)}<em>/</em>${fmt(observed.charges || 0)}`,
+      detail: `Expected ${fmt(expected.patients || 0)} &middot; ${fmt(expected.visits || 0)} &middot; ${fmt(expected.charges || 0)}`,
+      color: 'var(--ink)'
+    },
+    {
+      label: 'Read-only calls',
+      value: fmt(calls),
+      detail: calls
+        ? `${fmt(proof.observedCalls?.getdemographic || 0)} demographics &middot; ${fmt(proof.observedCalls?.getchargedetaildataicd10 || 0)} charge detail`
+        : 'Loaded from local export only',
+      color: 'var(--plum)'
+    },
+    {
+      label: 'Browser reload',
+      value: 'Local export',
+      detail: 'Reloading this dossier does not call AdvancedMD',
+      color: 'var(--teal-ink)'
+    }
+  ];
+
+  document.getElementById('proofStrip').innerHTML = items.map((item) => `
+    <div class="proof-item" style="--accent:${item.color}">
+      <div class="proof-label">${html(item.label)}</div>
+      <div class="proof-value">${item.value}</div>
+      <div class="proof-detail">${item.detail}</div>
+    </div>
+  `).join('');
+}
+
+function renderProofCoverage() {
+  const proof = getProof();
+  const counts = proof.counts || {};
+  const expected = counts.expected || {};
+  const observed = counts.observed || {};
+  const matched = counts.matched || {};
+  const missing = counts.missing || {};
+  const rows = [
+    ['Patients', 'patients'],
+    ['Visits', 'visits'],
+    ['Charges', 'charges'],
+    ['Diagnoses', 'diagnoses'],
+    ['Providers', 'providers'],
+    ['Insurance coverages', 'insuranceCoverages']
+  ];
+
+  document.getElementById('proofCoverageBody').innerHTML = rows.map(([label, key]) => `
+    <tr>
+      <td>${html(label)}</td>
+      <td>${fmt(expected[key])}</td>
+      <td>${fmt(observed[key])}</td>
+      <td>${matched[key] === undefined ? '&mdash;' : fmt(matched[key])}</td>
+      <td>${missing[key] === undefined ? '&mdash;' : fmt(missing[key])}</td>
+    </tr>
+  `).join('') || '<tr><td colspan="5"><div class="empty">No proof counts in this payload.</div></td></tr>';
+}
+
+function renderProofCalls() {
+  const proof = getProof();
+  const calls = proof.observedCalls || {};
+  const entries = Object.entries(calls).filter(([, value]) => Number(value || 0) > 0);
+  document.getElementById('proofCallList').innerHTML = entries.length ? entries.map(([action, value]) => `
+    <div class="metric-row">
+      <span class="metric-name">${html(actionLabel(action))}</span>
+      <span class="metric-value">${fmt(value)}</span>
+    </div>
+  `).join('') : '<div class="empty">No observed call counts in this payload.</div>';
+}
+
+function renderProofInterpretation() {
+  const proof = getProof();
+  const interpretation = proof.interpretation || {};
+  const rows = [
+    ['MVP core readback', interpretation.mvpCoreReadback],
+    ['Provider visit metrics', interpretation.providerVisitMetrics],
+    ['Debridement and E/M metrics', interpretation.debridementAndEmMetrics],
+    ['Payer metrics', interpretation.payerMetrics],
+    ['Wound outcomes', interpretation.woundOutcomes]
+  ];
+
+  document.getElementById('proofInterpretationGrid').innerHTML = rows.map(([title, value]) => `
+    <div class="readiness-card">
+      <strong>${html(title)}</strong>
+      <span>${html(valueLabel(value))}</span>
+    </div>
+  `).join('');
+}
+
+function renderReadiness() {
+  const data = state.dashboard || {};
+  const summary = data.summary || {};
+  const readiness = [
+    { title: 'Patients',    text: `${fmt(summary.totalPatients)} fake patients confirmed through AdvancedMD readback.` },
+    { title: 'Visits',      text: `${fmt(summary.totalEncounters)} readback visit records normalized for provider workload and volume.` },
+    { title: 'Charges',     text: `${fmt(summary.totalProcedures)} readback charge lines with CPT rollups for activity reporting.` },
+    { title: 'Diagnoses',   text: `${fmt(data.diagnoses?.length)} diagnosis groups powering wound mix and long-duration signals.` },
+    { title: 'Payers',      text: `${fmt(data.insurance?.length)} carrier groups available for payer mix views.` },
+    { title: 'Facilities',  text: `${fmt(data.locations?.length)} facilities discovered for future location filtering.` },
+    { title: 'Episodes',    text: `${fmt(summary.totalWoundEpisodes)} structured wound episodes in this export, so closure charts are omitted.` },
+    { title: 'PHI status',  text: state.payload?.phiStatus || 'sandbox-fake-only' }
+  ];
+  document.getElementById('readinessGrid').innerHTML = readiness.map((item) => `
+    <div class="readiness-card">
+      <strong>${html(item.title)}</strong>
+      <span>${html(item.text)}</span>
+    </div>
+  `).join('');
+  document.getElementById('phiTag').textContent = state.payload?.sourceMode === 'readback-export' ? 'Readback' : 'Sandbox';
+}
+
+function populateProviderFilter() {
+  const select = document.getElementById('providerFilter');
+  const providers = state.dashboard?.providers || [];
+  select.innerHTML = '<option value="all">All providers</option>' + providers.map((provider) => `
+    <option value="${html(provider.id)}">${html(formatProviderName(provider.name) || provider.id)}</option>
+  `).join('');
+  select.value = state.selectedProvider;
+}
+
+function renderAll() {
+  const payload = state.payload || {};
+  const data = state.dashboard || {};
+  document.getElementById('sourcePill').textContent = `${payload.dataSource || data.summary?.dataSource || 'AdvancedMD Connect'}`;
+  document.getElementById('generatedPill').textContent = `Updated ${shortDate(payload.generatedAt)}`;
+  document.getElementById('footerNote').textContent = `${payload.dataSource || 'AdvancedMD Connect'} · ${payload.phiStatus || 'sandbox-fake-only'}`;
+  populateProviderFilter();
+  renderProofStrip();
+  renderKpis();
+  renderProviderTable();
+  renderDiagnosisBars();
+  renderProviderCards();
+  renderProviderProcedureBars();
+  renderProviderSignals();
+  renderCodeTiles();
+  renderPayersAndLocations();
+  renderProofCoverage();
+  renderProofCalls();
+  renderProofInterpretation();
+  renderReadiness();
+}
+
+async function loadDashboard({ refresh = false } = {}) {
+  const button = document.getElementById('refreshBtn');
+  button.disabled = true;
+  button.classList.add('spinning');
+  try {
+    const params = new URLSearchParams({ source: 'connect-readback' });
+    if (refresh) params.set('refresh', 'true');
+    const response = await fetch(`/api/dashboard-data?${params.toString()}`);
+    if (!response.ok) throw new Error(`Dashboard data failed: ${response.status}`);
+    const payload = await response.json();
+    state.payload = payload;
+    state.dashboard = payload.data || payload;
+    renderAll();
+  } catch (error) {
+    console.error(error);
+    document.getElementById('proofStrip').innerHTML = `<div class="empty" style="grid-column: 1 / -1; padding: 28px">Unable to load readback-backed dashboard data: ${html(error.message)}</div>`;
+    document.getElementById('kpiGrid').innerHTML = '<div class="empty" style="grid-column: 1 / -1; padding: 28px">No AdvancedMD readback export is available for this dossier.</div>';
+  } finally {
+    button.disabled = false;
+    setTimeout(() => button.classList.remove('spinning'), 1200);
+  }
+}
+
+document.querySelectorAll('.chapter').forEach((tab) => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.chapter').forEach((item) => item.classList.remove('active'));
+    document.querySelectorAll('.section').forEach((item) => item.classList.remove('active'));
+    tab.classList.add('active');
+    const section = document.getElementById(tab.dataset.section);
+    section.classList.add('active');
+    /* trigger entrance animation by re-flow */
+    section.style.animation = 'none';
+    section.offsetHeight; /* eslint-disable-line no-unused-expressions */
+    section.style.animation = '';
+  });
+});
+
+document.getElementById('providerFilter').addEventListener('change', (event) => {
+  state.selectedProvider = event.target.value;
+  renderAll();
+});
+
+document.getElementById('refreshBtn').addEventListener('click', () => loadDashboard({ refresh: true }));
+
+loadDashboard();
+</script>
+</body>
+</html>

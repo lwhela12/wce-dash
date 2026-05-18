@@ -133,6 +133,10 @@ app.get('/api/test-fhir/:resourceType', async (req, res) => {
 // ========================================
 
 app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'advancedmd-dashboard.html'));
+});
+
+app.get('/fhir', (req, res) => {
   res.sendFile(path.join(__dirname, 'fhir-dashboard.html'));
 });
 
@@ -288,6 +292,7 @@ app.post('/api/auth/disconnect', (req, res) => {
 
 app.get('/api/dashboard-data', async (req, res) => {
   const forceRefresh = req.query.refresh === 'true';
+  const requireReadbackExport = req.query.source === 'connect-readback';
 
   const localBulkMetrics = readLocalBulkDashboardMetrics();
   if (localBulkMetrics) {
@@ -297,9 +302,18 @@ app.get('/api/dashboard-data', async (req, res) => {
     };
     return res.json({
       dataSource: localBulkMetrics.dataSource || 'local-bulk-dashboard',
+      sourceMode: localBulkMetrics.sourceMode || 'readback-export',
       data: localBulkMetrics.data,
       generatedAt: localBulkMetrics.generatedAt,
-      phiStatus: localBulkMetrics.phiStatus
+      phiStatus: localBulkMetrics.phiStatus,
+      proof: localBulkMetrics.proof || null
+    });
+  }
+
+  if (requireReadbackExport) {
+    return res.status(404).json({
+      error: 'No readback-backed AdvancedMD Connect dashboard export found.',
+      dataSource: 'missing-readback-export'
     });
   }
 
